@@ -1,0 +1,77 @@
+name: Vercel deploy
+
+on:
+  workflow_dispatch:
+    inputs:
+      target:
+        description: Deploy preview dari dev atau production dari main
+        required: true
+        default: preview
+        type: choice
+        options:
+          - preview
+          - production
+
+permissions:
+  contents: write
+
+jobs:
+  deploy:
+    name: Validate and deploy
+    if: ${{ (inputs.target == 'preview' && github.ref == 'refs/heads/dev') || (inputs.target == 'production' && github.ref == 'refs/heads/main') }}
+    runs-on: ubuntu-latest
+    env:
+      VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
+      VERCEL_ORG_ID: ${{ vars.VERCEL_ORG_ID }}
+      VERCEL_PROJECT_ID: ${{ vars.VERCEL_PROJECT_ID }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+      - run: npm ci
+      - run: npm run typecheck
+      - run: npm test
+      - run: npm run build
+      - name: Check Vercel credentials
+        id: credentials
+        run: |
+          if [ -n "$VERCEL_TOKEN" ] && [ -n "$VERCEL_ORG_ID" ] && [ -n "$VERCEL_PROJECT_ID" ]; then
+            echo "ready=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "ready=false" >> "$GITHUB_OUTPUT"
+            echo "Deployment skipped: set VERCEL_TOKEN secret and VERCEL_ORG_ID / VERCEL_PROJECT_ID variables."
+          fi
+      - name: Deploy preview
+        id: preview
+        if: ${{ steps.credentials.outputs.ready == 'true' && inputs.target == 'preview' }}
+        run: npx --yes vercel@65.16.0 deploy --yes --token "$VERCEL_TOKEN"
+      - name: Deploy production
+        id: production
+        if: ${{ steps.credentials.outputs.ready == 'true' && inputs.target == 'production' }}
+        run: npx --yes vercel@65.16.0 deploy --yes --prod --token "$VERCEL_TOKEN"
+      - name: Comment on commit
+        if: always()
+        uses: actions/github-script@v7
+        continue-on-error: true
+        env:
+          READY: ${{ steps.credentials.outputs.ready }}
+          PREVIEW: ${{ steps.preview.outcome }}
+          PRODUCTION: ${{ steps.production.outcome }}
+          TARGET: ${{ inputs.target }}
+          GATE_STATUS: ${{ job.status }}
+        with:
+          script: |
+            const outcome = process.env.TARGET === 'production' ? process.env.PRODUCTION : process.env.PREVIEW;
+            const status = process.env.GATE_STATUS === 'failure' ? 'GAGAL — gate atau deploy' : process.env.READY !== 'true' ? 'DILEWATI — kredensial Vercel belum lengkap' : outcome === 'success' ? 'SUKSES' : 'GAGAL';
+            const body = [
+              `**Vercel ${process.env.TARGET}: ${status}**`,
+              `Run #${context.runNumber}: https://github.com/${context.repo.owner}/${context.repo.repo}/actions/runs/${context.runId}`,
+              `Branch: ${context.ref.replace('refs/heads/', '')}`,
+              `Commit: ${context.sha}`,
+              `Versi: ${context.sha.slice(0, 7)}`,
+              'Gate: npm ci, typecheck, unit test, build.',
+              status === 'GAGAL' ? 'Lihat log run untuk langkah gagal; perbaiki dan jalankan ulang sebelum rilis.' : '',
+            ].filter(Boolean).join('\n');
+            await github.rest.repos.createCommitComment({ owner: context.repo.owner, repo: context.repo.repo, commit_sha: context.sha, body });

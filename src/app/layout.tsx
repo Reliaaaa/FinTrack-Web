@@ -1,4 +1,7 @@
 import type { Metadata } from 'next';
+import ScrollEnhancements from '@/components/ScrollEnhancements';
+import 'lenis/dist/lenis.css';
+import 'overlayscrollbars/overlayscrollbars.css';
 import './globals.css';
 
 export const metadata: Metadata = {
@@ -9,5 +12,5 @@ export const metadata: Metadata = {
 };
 
 export default function RootLayout({ children }: Readonly<{ children: React.ReactNode }>) {
-  return <html lang="id"><body>{children}</body></html>;
+  return <html lang="id"><body>{children}<ScrollEnhancements /></body></html>;
 }

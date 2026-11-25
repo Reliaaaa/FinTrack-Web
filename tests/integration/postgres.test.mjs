@@ -6,7 +6,9 @@ import { createServer } from 'node:net';
 import { test } from 'node:test';
 import { fileURLToPath } from 'node:url';
 import { dirname, resolve } from 'node:path';
+import { existsSync } from 'node:fs';
 import pg from 'pg';
+import { chromium } from '@playwright/test';
 
 const projectRoot = resolve(dirname(fileURLToPath(import.meta.url)), '../..');
 const adminUrl = process.env.FINTRACK_TEST_ADMIN_URL;
@@ -57,7 +59,7 @@ async function api(base, path, { method = 'GET', cookie, body } = {}) {
   return { status: response.status, json: await response.json(), cookie: response.headers.get('set-cookie')?.split(';', 1)[0] };
 }
 
-test('PostgreSQL: akun terisolasi, snapshot persisten, konflik versi, reset dan pencabutan sesi', { timeout: 90_000 }, async t => {
+test('PostgreSQL: akun terisolasi, snapshot persisten, konflik versi, reset dan pencabutan sesi', { timeout: 120_000 }, async t => {
   const admin = new pg.Client({ connectionString: localAdminUrl(adminUrl).toString(), ssl: false });
   const dbName = `fintrack_qa_${randomBytes(6).toString('hex')}`;
   const dbUrl = new URL(adminUrl);
@@ -93,6 +95,7 @@ test('PostgreSQL: akun terisolasi, snapshot persisten, konflik versi, reset dan 
     const a = registerA.cookie;
     const b = registerB.cookie;
     let accountAId;
+    let initialB;
     await t.test('registrasi menghasilkan dua akun dan snapshot awal terpisah', async () => {
       const firstA = await api(base, '/api/v1/bootstrap', { cookie: a });
       const firstB = await api(base, '/api/v1/bootstrap', { cookie: b });
@@ -105,6 +108,8 @@ test('PostgreSQL: akun terisolasi, snapshot persisten, konflik versi, reset dan 
       assert.equal(firstB.json.version, '1');
       assert.deepEqual(firstA.json.data.entries, []);
       assert.deepEqual(firstB.json.data.entries, []);
+      assert.deepEqual(firstA.json.data.wallets.map(({ name, openingBalance }) => ({ name, openingBalance })), [{ name: 'Tunai', openingBalance: 0 }]);
+      initialB = firstB.json.data;
     });
 
     const initial = await api(base, '/api/v1/data', { cookie: a });
@@ -124,7 +129,7 @@ test('PostgreSQL: akun terisolasi, snapshot persisten, konflik versi, reset dan 
       assert.deepEqual(afterA.json.data, data);
       assert.equal(afterA.json.version, '2');
       assert.deepEqual(afterB.json.data.entries, []);
-      assert.deepEqual(afterB.json.data.wallets, []);
+      assert.deepEqual(afterB.json.data, initialB);
     });
 
     await t.test('versi usang ditolak tanpa menimpa snapshot', async () => {
@@ -191,6 +196,32 @@ test('PostgreSQL: akun terisolasi, snapshot persisten, konflik versi, reset dan 
       if (racedLogin.cookie) assert.equal((await api(base, '/api/v1/data', { cookie: racedLogin.cookie })).status, 401);
       assert.equal((await api(base, '/api/v1/auth/login', { method: 'POST', body: { email: emailA, password: currentPassword } })).status, 401);
       assert.equal((await api(base, '/api/v1/auth/login', { method: 'POST', body: { email: emailA, password: finalPassword } })).status, 200);
+    });
+
+    if (process.env.FINTRACK_TEST_BROWSER === '1') await t.test('Chromium nyata: daftar, keluar, lalu masuk lagi pada PostgreSQL', async () => {
+      const browser = await chromium.launch({ headless: true, ...(existsSync('/usr/bin/chromium') ? { executablePath: '/usr/bin/chromium' } : {}) });
+      try {
+        const page = await browser.newPage();
+        const email = `qa-browser-${randomUUID()}@example.test`;
+        await page.goto(`${base}/login`);
+        await page.getByRole('heading', { name: 'Selamat datang kembali' }).waitFor();
+        await page.getByRole('button', { name: 'Daftar gratis' }).click();
+        await page.getByLabel('Nama lengkap').fill('QA Browser');
+        await page.getByLabel('Alamat email').fill(email);
+        await page.getByLabel('Kata sandi').fill('BrowserPass123!');
+        await page.getByRole('button', { name: 'Buat Akun' }).click();
+        await page.waitForURL(`${base}/`);
+        await page.getByText('Akun pribadi').waitFor();
+        await page.goto(`${base}/settings`);
+        await page.getByRole('button', { name: 'Keluar' }).click();
+        await page.getByRole('heading', { name: 'Selamat datang kembali' }).waitFor();
+        await page.goto(`${base}/login`);
+        await page.getByLabel('Alamat email').fill(email);
+        await page.getByLabel('Kata sandi').fill('BrowserPass123!');
+        await page.getByRole('button', { name: 'Masuk ke Dasbor' }).click();
+        await page.waitForURL(`${base}/`);
+        await page.getByText('Akun pribadi').waitFor();
+      } finally { await browser.close(); }
     });
   } finally {
     if (child && child.exitCode === null && child.signalCode === null) {

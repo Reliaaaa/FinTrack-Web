@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Activity, ArrowDownLeft, ArrowDownRight, ArrowLeftRight, ArrowRight, ArrowUpRight, BarChart3, Bell, CalendarDays, Check, ChevronDown, CircleHelp, CreditCard, Download, FileText, Filter, LayoutDashboard, LogOut, Menu, Moon, MoreHorizontal, Plus, Repeat2, Search, Settings, ShieldCheck, Sun, Trash2, TrendingUp, Wallet as WalletIcon, X } from 'lucide-react';
 import { Area, AreaChart, Bar, BarChart, CartesianGrid, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts';
-import { Budget, categoryColors, Entry, EntryType, expenseCategories, FinanceData, incomeCategories, monthKey, budgetsForMonth, Recurring, seedData, Wallet, walletBalance } from '@/lib/finance';
+import { Budget, categoryColors, Entry, EntryType, expenseCategories, FinanceData, incomeCategories, monthKey, budgetsForMonth, newFinanceData, Recurring, seedData, Wallet, walletBalance } from '@/lib/finance';
 import { byCategory, cashflow, metrics } from '@/lib/metrics';
 import { compact, dateLabel, monthLabel, rupiah } from '@/lib/format';
 import { download, downloadCsv, downloadIcs, downloadXlsx } from '@/lib/export';
@@ -19,6 +19,7 @@ const today = () => { const date = new Date(); return `${date.getFullYear()}-${S
 const id = () => crypto.randomUUID();
 const money = (value: string) => Number(value.replace(/[^\d]/g, '')) || 0;
 const demoKey = 'fintrack-demo-v1';
+const localModeKey = 'fintrack-local-mode';
 const sessionChangeKey = 'fintrack-session-change';
 const draftKey = (accountId: string) => `fintrack-pending-change:${accountId}`;
 
@@ -26,20 +27,21 @@ function signalSessionChange() {
   try { localStorage.setItem(sessionChangeKey, crypto.randomUUID()); } catch { /* verify when the tab gains focus */ }
 }
 
-function readDemoData(): FinanceData {
+function readDemoData(startEmpty = false): FinanceData {
   try {
     const raw = localStorage.getItem(demoKey);
     if (raw) return JSON.parse(raw);
   } catch { /* fall back to sample data */ }
-  return seedData();
+  return startEmpty ? newFinanceData('Pengguna') : seedData();
 }
 
-export default function FinanceApp() {
+export default function FinanceApp({ startOnLogin = false }: { startOnLogin?: boolean }) {
   const [data, setData] = useState<FinanceData>(() => seedData());
   const [ready, setReady] = useState(false);
   const [serverMode, setServerMode] = useState(false);
-  const [authRequired, setAuthRequired] = useState(false);
+  const [authRequired, setAuthRequired] = useState(startOnLogin);
   const [accountEnabled, setAccountEnabled] = useState(false);
+  const [localMode, setLocalMode] = useState(false);
   const [authOptions, setAuthOptions] = useState<AuthOptions>({ google: false, passwordReset: false });
   const [serviceIssue, setServiceIssue] = useState('');
   const [authNotice, setAuthNotice] = useState('');
@@ -58,6 +60,12 @@ export default function FinanceApp() {
   const [mobileMenu, setMobileMenu] = useState(false);
 
   const restoreAccount = useCallback((snapshot: AccountSnapshot) => {
+    try { sessionStorage.removeItem(localModeKey); } catch { /* use the account session */ }
+    if (startOnLogin) {
+      signalSessionChange();
+      location.replace('/');
+      return;
+    }
     accountRef.current = snapshot.user.id;
     versionRef.current = snapshot.version;
     let draft: FinanceData | undefined;
@@ -72,11 +80,12 @@ export default function FinanceApp() {
     setData(draft ?? snapshot.data);
     setConflict(Boolean(draft));
     setServerMode(true);
+    setLocalMode(false);
     setAuthRequired(false);
     setAuthNotice('');
     setCheckingSession(false);
     signalSessionChange();
-  }, []);
+  }, [startOnLogin]);
 
   const hideAccount = useCallback((notice = '') => {
     accountRef.current = '';
@@ -139,10 +148,22 @@ export default function FinanceApp() {
     if (nav.some(n => n.id === savedTab)) setTabState(savedTab);
     const onPop = () => { const path = location.pathname.slice(1) as Tab; setTabState(nav.some(n => n.id === path) ? path : 'dashboard'); };
     window.addEventListener('popstate', onPop);
-    setDark(localStorage.getItem('fintrack-theme') === 'dark');
+    try { setDark(localStorage.getItem('fintrack-theme') === 'dark'); } catch { /* use the default theme */ }
     (async () => {
       try {
-        const response = await fetch('/api/v1/bootstrap', { cache: 'no-store' });
+        if (!startOnLogin) {
+          let local = new URLSearchParams(location.search).get('mode') === 'lokal';
+          try {
+            local ||= sessionStorage.getItem(localModeKey) === '1';
+            if (local) sessionStorage.setItem(localModeKey, '1');
+          } catch { /* the URL still works when storage is restricted */ }
+          if (local) {
+            setLocalMode(true);
+            setData(readDemoData(true));
+            return;
+          }
+        }
+        const response = await fetch('/api/v1/bootstrap', { cache: 'no-store', signal: AbortSignal.timeout(12000) });
         const body = await response.json();
         if (response.status >= 500) {
           setServiceIssue(body.error || 'Server sedang tidak tersedia. Mode demo lokal aktif.');
@@ -162,14 +183,30 @@ export default function FinanceApp() {
       } finally { setReady(true); }
     })();
     return () => window.removeEventListener('popstate', onPop);
-  }, [restoreAccount]);
+  }, [restoreAccount, startOnLogin]);
 
   useEffect(() => { if ('serviceWorker' in navigator && process.env.NODE_ENV === 'production') navigator.serviceWorker.register('/sw.js').catch(() => undefined); }, []);
 
-  useEffect(() => { document.documentElement.dataset.theme = dark ? 'dark' : 'light'; if (ready) localStorage.setItem('fintrack-theme', dark ? 'dark' : 'light'); }, [dark, ready]);
+  useEffect(() => {
+    document.documentElement.dataset.theme = dark ? 'dark' : 'light';
+    try { if (ready) localStorage.setItem('fintrack-theme', dark ? 'dark' : 'light'); } catch { /* the current theme still applies */ }
+  }, [dark, ready]);
   useEffect(() => { if (!toast) return; const timer = setTimeout(() => setToast(''), 3500); return () => clearTimeout(timer); }, [toast]);
-  const setTab = (next: Tab) => { setTabState(next); setMobileMenu(false); history.pushState(null, '', next === 'dashboard' ? '/' : `/${next}`); window.scrollTo({ top: 0, behavior: 'smooth' }); };
-  const openEditor = (next: Editor) => { editorOpener.current = document.activeElement as HTMLElement; setEditor(next); };
+  const setTab = (next: Tab) => {
+    setTabState(next);
+    setMobileMenu(false);
+    history.pushState(null, '', next === 'dashboard' ? '/' : `/${next}`);
+    window.scrollTo({ top: 0, behavior: 'instant' });
+  };
+  const openEditor = (next: Editor) => {
+    editorOpener.current = document.activeElement as HTMLElement;
+    if ((next?.kind === 'transaction' || next?.kind === 'recurring') && !next.item && !data.wallets.some(wallet => !wallet.archived)) {
+      setToast('Tambahkan dompet aktif terlebih dahulu.');
+      setEditor({ kind: 'wallet' });
+      return;
+    }
+    setEditor(next);
+  };
   const closeEditor = () => { setEditor(null); requestAnimationFrame(() => editorOpener.current?.focus()); };
   const commit = async (next: FinanceData, message: string) => {
     if (serverMode && conflict) { setToast('Selesaikan konflik data sebelum menyimpan lagi.'); return false; }
@@ -240,10 +277,16 @@ export default function FinanceApp() {
   const categories = useMemo(() => byCategory(data, period), [data, period]);
   const trend = useMemo(() => cashflow(data, period), [data, period]);
   const activeWallets = data.wallets.filter(w => !w.archived);
-  const enterDemo = () => {
+  const enterLocalMode = () => {
+    try { sessionStorage.setItem(localModeKey, '1'); } catch { /* the URL carries the choice */ }
+    if (startOnLogin) {
+      location.assign('/?mode=lokal');
+      return;
+    }
     accountRef.current = '';
-    setData(readDemoData());
+    setData(readDemoData(true));
     setServerMode(false);
+    setLocalMode(true);
     setAuthRequired(false);
     setConflict(false);
     setServiceIssue('');
@@ -281,14 +324,14 @@ export default function FinanceApp() {
     if (saved) closeEditor();
   };
   if (!ready) return <div className="loading-screen"><div className="logo-mark"><TrendingUp size={23} /></div><span>Menyiapkan FinTrack…</span></div>;
-  if (authRequired) return <AuthScreen options={authOptions} sessionNotice={authNotice} onSuccess={async () => {
+  if (authRequired) return <AuthScreen available={accountEnabled} connectionIssue={Boolean(serviceIssue)} options={authOptions} sessionNotice={authNotice} onSuccess={async () => {
     const response = await fetch('/api/v1/bootstrap', { cache: 'no-store' });
     const body = await response.json();
     if (!response.ok || !body.user?.id || !body.data || !body.version) throw new Error('Gagal memuat akun. Coba lagi.');
     if (body.authOptions) setAuthOptions(body.authOptions);
     setServiceIssue('');
     restoreAccount(body);
-  }} onDemo={enterDemo} />;
+  }} onLocal={enterLocalMode} />;
   return <>
   {checkingSession && <div className="loading-screen" role="status">Memeriksa sesi akun…</div>}
   <div className="app-shell" style={checkingSession ? { display: 'none' } : undefined}>
@@ -302,7 +345,11 @@ export default function FinanceApp() {
     <div className="main-column">
       <header className="topbar"><div className="topbar-left"><button className="icon-button mobile-menu" onClick={() => setMobileMenu(!mobileMenu)} aria-label="Buka menu"><Menu size={22} /></button><span className="topbar-title">{nav.find(n => n.id === tab)?.label}</span><span className="topbar-divider" /><span className="topbar-subtitle">Ruang keuangan Anda</span>{saving && <span className="status-pill blue" role="status">Menyimpan…</span>}</div><div className="topbar-actions"><label className="period-select"><CalendarDays size={16} /><input type="month" aria-label="Pilih bulan" value={`${period.getFullYear()}-${String(period.getMonth() + 1).padStart(2, '0')}`} onChange={e => { if (e.target.value) { const [year, month] = e.target.value.split('-').map(Number); setPeriod(new Date(year, month - 1, 1)); } }} /></label><button className="search-trigger" onClick={() => setTab('transactions')}><Search size={17} /> Cari transaksi...</button><button className="icon-button" aria-label={dark ? 'Aktifkan tema terang' : 'Aktifkan tema gelap'} onClick={() => setDark(!dark)}>{dark ? <Sun size={19} /> : <Moon size={19} />}</button><button className="icon-button notification" aria-label="Lihat anggaran" onClick={() => setTab('budgets')}><Bell size={19} />{budgetsForMonth(data, period).some(b => current.entries.filter(e => e.type === 'expense' && e.category === b.category).reduce((a, e) => a + e.amount, 0) >= b.limit * .8) && <i />}</button><span className="avatar header-avatar">{data.name.charAt(0).toUpperCase()}</span></div></header>
       <main className="content">
-        {!serverMode && <div className="demo-banner" role={serviceIssue ? 'alert' : undefined}><ShieldCheck size={17} /><span><strong>{serviceIssue ? 'Server tidak tersedia.' : 'Mode demo.'}</strong> {serviceIssue || 'Data demo hanya tersimpan di browser ini.'}</span>{accountEnabled ? <button onClick={() => location.reload()}>Masuk ke akun <ArrowRight size={14} /></button> : <button onClick={() => setTab('settings')}>Pelajari <ArrowRight size={14} /></button>}</div>}
+        {!serverMode && <div className="demo-banner" role={serviceIssue ? 'alert' : undefined}>
+          <ShieldCheck size={17} />
+          <span><strong>{serviceIssue ? 'Server tidak tersedia.' : localMode ? 'Mode lokal.' : 'Mode demo.'}</strong> {serviceIssue || 'Data tersimpan di browser ini.'}</span>
+          <a href="/login">Masuk / Daftar <ArrowRight size={14} /></a>
+        </div>}
         {serverMode && conflict && <div className="demo-banner" role="alert"><ShieldCheck size={17} /><span><strong>Konflik data.</strong> Perubahan lokal Anda tersimpan sebagai draf di browser. Unduh salinannya sebelum memakai data server terbaru.</span><button onClick={saveConflictDraft}>Unduh draf <Download size={14} /></button><button onClick={loadLatest}>Muat data terbaru <ArrowRight size={14} /></button></div>}
         {tab === 'dashboard' && <Dashboard data={data} current={current} categories={categories} trend={trend} period={period} open={openEditor} go={setTab} />}
         {tab === 'transactions' && <Transactions data={data} entries={data.entries} open={openEditor} remove={deleteEntry} />}
@@ -454,11 +501,13 @@ function EditorDialog({ editor, data, period, saving, onClose, onSave }: { edito
     {error && <p className="form-error" role="alert">{error}</p>}<div className="modal-footer"><button type="button" className="button button-outline" onClick={onClose}>Batal</button><button type="submit" className="button button-dark" disabled={saving}>{saving ? 'Menyimpan…' : `Simpan ${editor.kind === 'transaction' ? 'Transaksi' : heading}`}</button></div></form></div></div>;
 }
 
-function AuthScreen({ options, sessionNotice, onSuccess, onDemo }: {
+function AuthScreen({ available, connectionIssue, options, sessionNotice, onSuccess, onLocal }: {
+  available: boolean;
+  connectionIssue: boolean;
   options: AuthOptions;
   sessionNotice: string;
   onSuccess: () => Promise<void>;
-  onDemo: () => void;
+  onLocal: () => void;
 }) {
   const [register, setRegister] = useState(false);
   const [forgot, setForgot] = useState(false);
@@ -523,10 +572,10 @@ function AuthScreen({ options, sessionNotice, onSuccess, onDemo }: {
         <div className="auth-brand"><span className="logo-mark"><TrendingUp size={21} /></span><strong>FinTrack</strong></div>
         <div className="auth-form-wrap">
           <span className="eyebrow">KEUANGAN LEBIH JELAS</span>
-          <h1>{forgot ? 'Pulihkan kata sandi' : register ? 'Mulai perjalanan finansial Anda' : 'Selamat datang kembali'}</h1>
-          <p>Kelola arus kas, anggaran, dan tabungan Anda dalam satu dasbor.</p>
+          <h1>{!available ? 'Masuk ke FinTrack' : forgot ? 'Pulihkan kata sandi' : register ? 'Daftar akun FinTrack' : 'Selamat datang kembali'}</h1>
+          <p>{available ? 'Kelola arus kas, anggaran, dan tabungan Anda dalam satu dasbor.' : connectionIssue ? 'Akun online sedang tidak dapat diakses.' : 'Akun online belum tersedia.'}</p>
           {sessionNotice && <p role="status">{sessionNotice}</p>}
-          <form onSubmit={submit}>
+          {available && <form onSubmit={submit}>
             {register && <label>Nama lengkap<input value={name} onChange={e => setName(e.target.value)} required maxLength={60} /></label>}
             <label>Alamat email<input type="email" value={email} onChange={e => setEmail(e.target.value)} required autoComplete="email" placeholder="nama@email.com" /></label>
             {!forgot && <label>Kata sandi<input type="password" value={password} onChange={e => setPassword(e.target.value)} required minLength={8} maxLength={register ? 72 : 128} autoComplete={register ? 'new-password' : 'current-password'} placeholder="Minimal 8 karakter" /></label>}
@@ -535,11 +584,18 @@ function AuthScreen({ options, sessionNotice, onSuccess, onDemo }: {
             <button className="button button-dark auth-submit" type="submit" disabled={busy}>
               {busy ? 'Memproses…' : forgot ? 'Kirim tautan pemulihan' : register ? 'Buat Akun' : 'Masuk ke Dasbor'} <ArrowRight size={17} />
             </button>
-          </form>
-          {options.passwordReset && !register && <p className="auth-switch"><button type="button" disabled={busy} onClick={toggleForgot}>{forgot ? 'Kembali ke masuk' : 'Lupa kata sandi?'}</button></p>}
-          {options.google && !forgot && <p className="auth-switch"><a href="/api/v1/auth/google">Lanjutkan dengan Google</a></p>}
-          {!forgot && <p className="auth-switch">{register ? 'Sudah punya akun?' : 'Belum punya akun?'} <button type="button" disabled={busy} onClick={toggleRegister}>{register ? 'Masuk' : 'Daftar gratis'}</button></p>}
-          <div className="auth-demo"><span>Ingin melihat dulu?</span><button type="button" disabled={busy} onClick={onDemo}>Jelajahi mode demo <ArrowRight size={15} /></button></div>
+          </form>}
+          {available && options.passwordReset && !register && <p className="auth-switch"><button type="button" disabled={busy} onClick={toggleForgot}>{forgot ? 'Kembali ke masuk' : 'Lupa kata sandi?'}</button></p>}
+          {available && options.google && !forgot && <p className="auth-switch"><a href="/api/v1/auth/google">Lanjutkan dengan Google</a></p>}
+          {available && !forgot && <p className="auth-switch">{register ? 'Sudah punya akun?' : 'Belum punya akun?'} <button type="button" disabled={busy} onClick={toggleRegister}>{register ? 'Masuk' : 'Daftar gratis'}</button></p>}
+          {available ? (
+            <div className="auth-demo"><span>Data tersimpan di browser ini.</span><button type="button" disabled={busy} onClick={onLocal}>Gunakan tanpa akun <ArrowRight size={15} /></button></div>
+          ) : (
+            <div>
+              <p>Anda bisa mencatat transaksi dan anggaran di browser ini.</p>
+              <button className="button button-dark auth-submit" type="button" onClick={onLocal}>Gunakan tanpa akun <ArrowRight size={17} /></button>
+            </div>
+          )}
         </div>
         <small className="auth-copyright">© {new Date().getFullYear()} FinTrack Web</small>
       </div>

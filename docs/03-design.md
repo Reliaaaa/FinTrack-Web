@@ -1,11 +1,12 @@
 # Desain FinTrack Web
 
-Dokumen ini memetakan UI yang **sudah ada** pada 16 November 2026 dan state yang diperlukan untuk menuntaskan fitur P0. Acuan visual: [spesifikasi UI/UX](reference/UI-UX-Stitch.md) dan [enam layar ekspor Stitch](stitch/stitch_fintrack_finance_dashboard/). Canva tidak tersambung; wireframe di bawah ini berupa teks, bukan tautan desain Canva.
+Dokumen ini memetakan UI FinTrack dan state yang diperlukan untuk menuntaskan fitur P0. Acuan visual: [spesifikasi UI/UX](reference/UI-UX-Stitch.md) dan [enam layar ekspor Stitch](stitch/).
 
 ## Peta navigasi
 
 ```text
-Login / Daftar ── berhasil ──> Dasbor
+/login ── Masuk / Daftar ──> Dasbor akun
+  ├── Gunakan tanpa akun ──> Dasbor lokal
   ├── Lanjutkan dengan Google ── OAuth callback ──> Dasbor
   └── Lupa kata sandi ── email tautan ──> /reset ──> Login
                             ├── Transaksi ──> Tambah / Ubah Transaksi
@@ -40,7 +41,7 @@ DESKTOP                                      MOBILE
 
 | Layar / fitur | Tujuan dan komponen utama | Loading | Kosong | Error | Sukses |
 | --- | --- | --- | --- | --- | --- |
-| Login/Daftar | Email, kata sandi, nama saat daftar, Google OAuth, lupa kata sandi, tautan mode demo | Tombol “Memproses…” dinonaktifkan | Tidak relevan | Pesan dekat form untuk kredensial/validasi; kegagalan OAuth dan layanan tak tersedia ditampilkan | Masuk ke dasbor dengan data akun; pengiriman tautan pemulihan diberi pesan umum |
+| Login/Daftar | `/login` dapat dibuka dari dasbor. Saat akun online tersedia, form berisi email, kata sandi, dan nama untuk pendaftaran. Google dan pemulihan mengikuti konfigurasi. | Tombol “Memproses…” dinonaktifkan | Saat PostgreSQL belum tersambung, halaman menampilkan tombol “Gunakan tanpa akun” | Pesan dekat form untuk kredensial, validasi, atau layanan yang tidak tersedia | Masuk menuju dasbor akun. Mode lokal membuka catatan yang tersimpan atau menyiapkan dompet Tunai kosong. |
 | Reset kata sandi | Tautan email membuka `/reset` dan form kata sandi baru | Tombol “Memproses…” dinonaktifkan | Token hilang membuat tombol simpan nonaktif | Token salah/kedaluwarsa atau kegagalan server ditampilkan | Pesan berhasil dan tautan kembali ke login |
 | Proteksi akun | Memisahkan data demo dari akun serta menolak sesi hilang | Layar “Menyiapkan FinTrack…” | Akun baru menampilkan daftar kosong setelah login | Sesi hilang membuka form login; error database tampak pada banner demo | Data akun tampil setelah bootstrap |
 | Dasbor | Empat KPI, grafik enam bulan, donat kategori, anggaran, transaksi terakhir | Layar persiapan saat bootstrap | Donat dan anggaran memiliki pesan serta ajakan mencatat/atur; transaksi baru belum memiliki empty state tersendiri | Banner server saat bootstrap gagal | Angka, grafik, dan daftar mengikuti perubahan data |
@@ -65,7 +66,9 @@ Alur UI Google OAuth, lupa kata sandi, dan reset sudah tersedia, tetapi perlu pe
 | Amber | `#B45309` | `#FBBF24` | Anggaran mendekati batas |
 | Blue | `#2563EB` | `#60A5FA` | Transfer, bantuan |
 
-Tipografi memakai Plus Jakarta Sans dengan fallback Inter/system, angka menggunakan `tabular-nums`, dan mata uang menggunakan `Intl.NumberFormat('id-ID')`. Kartu beradius 12 px; input/tombol 8 px. Komponen bersama di kode: `PageHeading`, `SectionHeading`, `Empty`, `BudgetBar`, ikon transaksi, badge/status, serta `EditorDialog` untuk empat jenis data. Animasi hanya pada hover dan buka modal; `prefers-reduced-motion: reduce` mematikan transisi/animasi.
+Tipografi mengikuti SF Pro Display dari [LandingPageReliaaaa](https://github.com/Reliaaaa/LandingPageReliaaaa). FinTrack memilih SF Pro bawaan perangkat Apple dan memakai Inter atau font sistem pada perangkat lain. Berkas font Apple tidak disematkan karena [lisensinya](https://developer.apple.com/fonts/) membatasi penggunaan dan distribusi. Angka memakai `tabular-nums` dan nominal diformat dengan `Intl.NumberFormat('id-ID')`.
+
+Pengguliran roda mouse memakai Lenis, dengan scrollbar badan halaman dari OverlayScrollbars. Inisialisasinya diadaptasi dari [smooth-scroll.js](https://github.com/Reliaaaa/Internship-BEM-Website-Project/blob/b6d5abe73e9411591bb7380bd204252dd65906a1/smooth-scroll.js) dan [scrollbar.js](https://github.com/Reliaaaa/Internship-BEM-Website-Project/blob/b6d5abe73e9411591bb7380bd204252dd65906a1/scrollbar.js). Sentuhan dan area gulir di modal tetap memakai kontrol browser. Pengaturan pengurangan gerakan mematikan Lenis dan animasi antarmuka.
 
 ## Aksesibilitas dan kontrol kualitas
 

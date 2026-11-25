@@ -109,7 +109,9 @@
 .donut-layout .donut-ring::after { inset: 15%; }
 .donut-layout .donut-center strong { font-size: 17px; }
 .donut-layout .category-legend { padding-top: 0; border: 0; }
-.donut-layout .category-legend > div { padding: 4px 0; }
+.donut-layout .category-legend > div { min-width: 0; padding: 4px 0; }
+.donut-layout .category-legend > div > span { min-width: 0; }
+.donut-layout .category-legend > div > span > span { overflow: hidden; text-overflow: ellipsis; }
 .donut-layout .category-legend i { flex: none; }
 .dashboard-overview .dashboard-bottom-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 16px; }
 .dashboard-overview .padded-card { padding: 16px; }

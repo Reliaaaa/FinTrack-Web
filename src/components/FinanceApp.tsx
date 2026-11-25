@@ -433,7 +433,7 @@ function Dashboard({ data, current, categories, trend, period, open, go }: {
           </div>
           <div className="category-legend">
             {visibleCategories.map((item, index) => <div key={item.name}>
-              <span><i style={{ background: chartColors[index] }} />{item.name}</span>
+              <span><i style={{ background: chartColors[index] }} /><span title={item.name}>{item.name}</span></span>
               <strong>{rupiah(item.value)}</strong>
             </div>)}
           </div>

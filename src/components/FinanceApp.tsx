@@ -339,7 +339,7 @@ export default function FinanceApp({ startOnLogin = false }: { startOnLogin?: bo
       <button className="brand" onClick={() => setTab('dashboard')} aria-label="FinTrack, buka dasbor"><span className="logo-mark"><TrendingUp size={21} strokeWidth={2.6} /></span><span><strong>FinTrack</strong><small>KEUANGAN PRIBADI</small></span></button>
       <button className="button button-dark sidebar-cta" onClick={() => openEditor({ kind: 'transaction' })}><Plus size={18} /> Catat Transaksi</button>
       <p className="sidebar-caption">MENU UTAMA</p>
-      <nav aria-label="Navigasi utama">{nav.map(n => <button key={n.id} className={`nav-item ${tab === n.id ? 'active' : ''}`} onClick={() => setTab(n.id)}><n.icon size={19} strokeWidth={1.9} /> <span>{n.label}</span></button>)}</nav>
+      <nav aria-label="Navigasi utama">{nav.map(n => <button key={n.id} aria-current={tab === n.id ? 'page' : undefined} className={`nav-item ${tab === n.id ? 'active' : ''}`} onClick={() => setTab(n.id)}><n.icon size={19} strokeWidth={1.9} /> <span>{n.label}</span></button>)}</nav>
       <div className="sidebar-bottom"><div className="help-card"><CircleHelp size={19} /><strong>Butuh bantuan?</strong><p>Pahami arus kas Anda dengan FinTrack.</p><a href="https://github.com/Reliaaaa/FinTrack-Web#readme" target="_blank" rel="noreferrer">Lihat panduan <ArrowRight size={14} /></a></div><button className="profile-button" onClick={() => setTab('settings')}><span className="avatar">{data.name.charAt(0).toUpperCase()}</span><span><strong>{data.name}</strong><small>{serverMode ? 'Akun pribadi' : 'Mode demo lokal'}</small></span><MoreHorizontal size={17} /></button></div>
     </aside>
     <div className="main-column">
@@ -375,21 +375,124 @@ function BudgetBar({ spent, limit }: { spent: number; limit: number }) { const p
 function EntrySymbol({ type }: { type: EntryType }) { return <span className={`entry-symbol ${type}`}>{type === 'income' ? <ArrowDownLeft size={18} /> : type === 'transfer' ? <ArrowLeftRight size={17} /> : <ArrowUpRight size={18} />}</span>; }
 function ChartTip({ active, payload, label }: { active?: boolean; payload?: { name: string; value: number; color: string }[]; label?: string }) { if (!active || !payload?.length) return null; return <div className="chart-tip"><strong>{label}</strong>{payload.map(p => <div key={p.name}><span style={{ background: p.color }} />{p.name}: {rupiah(p.value)}</div>)}</div>; }
 
-function Dashboard({ data, current, categories, trend, period, open, go }: { data: FinanceData; current: ReturnType<typeof metrics>; categories: ReturnType<typeof byCategory>; trend: ReturnType<typeof cashflow>; period: Date; open: (editor: Editor) => void; go: (tab: Tab) => void }) {
+function Dashboard({ data, current, categories, trend, period, open, go }: {
+  data: FinanceData;
+  current: ReturnType<typeof metrics>;
+  categories: ReturnType<typeof byCategory>;
+  trend: ReturnType<typeof cashflow>;
+  period: Date;
+  open: (editor: Editor) => void;
+  go: (tab: Tab) => void;
+}) {
+  const budgets = budgetsForMonth(data, period);
+  const recent = [...data.entries].sort((a, b) => b.date.localeCompare(a.date)).slice(0, 4);
+  const upcoming = data.recurring
+    .filter(item => item.active && item.type === 'expense')
+    .sort((a, b) => a.nextDate.localeCompare(b.nextDate))
+    .slice(0, 4);
   const cards = [
-    { label: 'Total Kekayaan Bersih', value: current.balance, icon: WalletIcon, color: 'navy', foot: `${data.wallets.length} dompet tercatat` },
-    { label: 'Pemasukan Bulan Ini', value: current.income, icon: ArrowDownLeft, color: 'green', foot: 'Dari semua dompet' },
-    { label: 'Pengeluaran Bulan Ini', value: current.expense, icon: ArrowUpRight, color: 'rose', foot: 'Bulan berjalan' },
-    { label: 'Sisa Anggaran Aman', value: current.budgetRemaining, icon: ShieldCheck, color: 'blue', foot: current.budgetLimit ? `${Math.round(current.spending / current.budgetLimit * 100)}% terpakai` : 'Atur anggaran pertama' },
+    { label: 'Kekayaan bersih', value: current.balance, icon: WalletIcon, detail: data.wallets.length + ' dompet tercatat' },
+    { label: 'Pemasukan', value: current.income, icon: ArrowDownLeft, detail: 'Total pada bulan terpilih' },
+    { label: 'Pengeluaran', value: current.expense, icon: ArrowUpRight, detail: 'Total pada bulan terpilih' },
+    { label: 'Sisa anggaran', value: current.budgetLimit ? current.budgetRemaining : null, icon: ShieldCheck, detail: current.budgetLimit ? Math.round(current.spending / current.budgetLimit * 100) + '% terpakai' : 'Belum ada anggaran' },
   ];
-  return <>
-    <PageHeading eyebrow="GAMBARAN UMUM" title={`Selamat datang, ${data.name}!`} description={`Ini ringkasan keuangan Anda untuk ${monthLabel(period)}.`} action={<button className="button button-outline" onClick={() => window.print()}><Download size={17} /> Unduh ringkasan</button>} />
-    <div className="kpi-grid">{cards.map(card => <div className="card kpi-card" key={card.label}><div className="kpi-head"><span>{card.label}</span><span className={`kpi-icon ${card.color}`}><card.icon size={19} /></span></div><strong className="kpi-value">{rupiah(card.value)}</strong><div className="kpi-foot"><span className={`status-pill ${card.color}`}>{card.color === 'rose' ? <ArrowUpRight size={14} /> : <ArrowUpRight size={14} />}{card.color === 'rose' ? 'Pengeluaran' : card.color === 'green' ? 'Pemasukan' : card.color === 'blue' ? 'Terkendali' : 'Terkini'}</span><span>{card.foot}</span></div></div>)}</div>
-    <div className="dashboard-chart-grid"><div className="card chart-card"><SectionHeading title="Tren Arus Kas" subtitle="Pemasukan dan pengeluaran 6 bulan terakhir" action={<button className="text-link" onClick={() => go('reports')}>Laporan rinci <ArrowRight size={15} /></button>} /><div className="chart-legend"><span><i className="green-dot" /> Pemasukan</span><span><i className="rose-dot" /> Pengeluaran</span></div><div className="chart-area"><ResponsiveContainer width="100%" height="100%"><BarChart data={trend} barGap={5} barCategoryGap="35%"><CartesianGrid vertical={false} stroke="var(--grid)" strokeDasharray="3 4" /><XAxis dataKey="name" tickLine={false} axisLine={false} tick={{ fill: 'var(--muted)', fontSize: 12 }} /><YAxis tickLine={false} axisLine={false} tickFormatter={value => `${value / 1_000_000} jt`} width={44} tick={{ fill: 'var(--muted)', fontSize: 11 }} /><Tooltip content={<ChartTip />} cursor={{ fill: 'var(--hover)' }} /><Bar dataKey="pemasukan" name="Pemasukan" fill="#10b981" radius={[4, 4, 0, 0]} maxBarSize={25} /><Bar dataKey="pengeluaran" name="Pengeluaran" fill="#fb7185" radius={[4, 4, 0, 0]} maxBarSize={25} /></BarChart></ResponsiveContainer></div><div className="chart-footer"><TrendingUp size={17} /> Rasio tabungan bulan ini <strong>{current.savingsRate}%</strong></div></div>
-    <div className="card donut-card"><SectionHeading title="Distribusi Pengeluaran" subtitle="Berdasarkan kategori belanja" /><div className="donut-wrap">{categories.length ? <><div className="donut-ring" role="img" aria-label={`Distribusi pengeluaran: ${categories.map(c => `${c.name} ${rupiah(c.value)}`).join(', ')}`} style={{ background: `conic-gradient(${categories.map((c, i) => { const start = categories.slice(0, i).reduce((sum, item) => sum + item.value, 0) / current.expense * 100; const end = (categories.slice(0, i).reduce((sum, item) => sum + item.value, 0) + c.value) / current.expense * 100; return `${categoryColors[c.name] || '#94a3b8'} ${start}% ${end}%`; }).join(',')})` }} /><div className="donut-center"><span>Total keluar</span><strong>{compact(current.expense)}</strong></div></> : <Empty title="Belum ada pengeluaran" detail="Catat transaksi untuk melihat distribusi." />}</div><div className="category-legend">{categories.slice(0, 5).map(c => <div key={c.name}><span><i style={{ background: categoryColors[c.name] || '#94a3b8' }} />{c.name}</span><strong>{rupiah(c.value)}</strong></div>)}</div></div></div>
-    <div className="dashboard-bottom-grid"><div className="card padded-card"><SectionHeading title="Status Anggaran" subtitle={`Perencanaan ${monthLabel(period)}`} action={<button className="text-link" onClick={() => go('budgets')}>Kelola <ArrowRight size={15} /></button>} /><div className="budget-mini-list">{budgetsForMonth(data, period).length ? budgetsForMonth(data, period).slice(0, 4).map(b => { const spent = current.entries.filter(e => e.type === 'expense' && e.category === b.category).reduce((a, e) => a + e.amount, 0); const percent = Math.round(spent / b.limit * 100); return <div className="budget-mini" key={b.id}><div className="budget-title"><span><i className="category-dot" style={{ background: categoryColors[b.category] }} />{b.category}</span><strong className={percent >= 80 ? 'warning-text' : ''}>{percent}%</strong></div><BudgetBar spent={spent} limit={b.limit} /></div>; }) : <Empty title="Belum ada anggaran" detail="Tetapkan batas belanja untuk mulai memantau." action={<button className="button button-dark" onClick={() => open({ kind: 'budget' })}>Atur anggaran</button>} />}</div></div>
-    <div className="card padded-card"><SectionHeading title="Transaksi Terbaru" subtitle="Aktivitas dari semua dompet" action={<button className="text-link" onClick={() => go('transactions')}>Lihat semua <ArrowRight size={15} /></button>} /><div className="recent-list">{[...data.entries].sort((a, b) => b.date.localeCompare(a.date)).slice(0, 5).map(entry => <div className="recent-row" key={entry.id}><EntrySymbol type={entry.type} /><div className="recent-details"><strong>{entry.title}</strong><span>{entry.category} · {data.wallets.find(w => w.id === entry.walletId)?.name || 'Dompet'} · {dateLabel(entry.date)}</span></div><strong className={`amount ${entry.type}`}>{entry.type === 'expense' ? '-' : entry.type === 'income' ? '+' : ''}{rupiah(entry.amount)}</strong></div>)}</div></div></div>
-  </>;
+  const chartColors = ['#235347', '#8eb69b', '#467d6d', '#aecdb4', '#688f7c', '#163832'];
+  const visibleCategories = categories.slice(0, 5);
+  if (categories.length > 5) {
+    visibleCategories.push({ name: 'Kategori lainnya', value: categories.slice(5).reduce((total, item) => total + item.value, 0) });
+  }
+  let offset = 0;
+  const segments = visibleCategories.map((category, index) => {
+    const start = offset;
+    offset += category.value / current.expense * 100;
+    return chartColors[index] + ' ' + start + '% ' + offset + '%';
+  });
+
+  return <section className="dashboard-overview">
+    <PageHeading
+      eyebrow={'Ringkasan · ' + monthLabel(period)}
+      title={'Selamat datang, ' + data.name + '!'}
+      description="Pantau saldo, pengeluaran, dan tagihan dalam satu tempat."
+      action={<button className="button button-outline" onClick={() => window.print()}><Download size={17} /> Unduh ringkasan</button>}
+    />
+    <div className="kpi-grid">
+      {cards.map((card, index) => <div className={`card kpi-card ${index === 0 ? 'kpi-primary' : ''}`} key={card.label}>
+        <div className="kpi-head"><span>{card.label}</span><span className="kpi-icon"><card.icon size={19} /></span></div>
+        <strong className="kpi-value">{card.value === null ? '—' : rupiah(card.value)}</strong>
+        <p className="kpi-caption">{card.detail}</p>
+      </div>)}
+    </div>
+
+    <div className="dashboard-chart-grid">
+      <div className="card donut-card">
+        <SectionHeading title="Pengeluaran per Kategori" subtitle={monthLabel(period)} />
+        {visibleCategories.length ? <div className="donut-layout">
+          <div className="donut-wrap">
+            <div className="donut-ring" aria-hidden="true" style={{ background: 'conic-gradient(' + segments.join(',') + ')' }} />
+            <div className="donut-center"><span>Total belanja</span><strong>{compact(current.expense)}</strong></div>
+          </div>
+          <div className="category-legend">
+            {visibleCategories.map((item, index) => <div key={item.name}>
+              <span><i style={{ background: chartColors[index] }} /><span title={item.name}>{item.name}</span></span>
+              <strong>{rupiah(item.value)}</strong>
+            </div>)}
+          </div>
+        </div> : <Empty title="Belum ada pengeluaran" detail="Kategori akan muncul setelah Anda mencatat pengeluaran." />}
+      </div>
+      <div className="card chart-card">
+        <SectionHeading title="Arus Kas" subtitle="Pemasukan dan pengeluaran enam bulan terakhir" action={<button className="text-link" onClick={() => go('reports')}>Laporan <ArrowRight size={15} /></button>} />
+        <div className="chart-legend"><span><i className="income-dot" /> Pemasukan</span><span><i className="expense-dot" /> Pengeluaran</span></div>
+        <div className="chart-area">
+          <ResponsiveContainer width="100%" height="100%">
+            <BarChart data={trend} barGap={4} barCategoryGap="28%">
+              <CartesianGrid vertical={false} stroke="var(--grid)" strokeDasharray="3 4" />
+              <XAxis dataKey="name" tickLine={false} axisLine={false} tick={{ fill: 'var(--muted)', fontSize: 11 }} />
+              <YAxis tickLine={false} axisLine={false} tickFormatter={value => `${value / 1_000_000} jt`} width={38} tick={{ fill: 'var(--muted)', fontSize: 10 }} />
+              <Tooltip content={<ChartTip />} cursor={{ fill: 'var(--hover)' }} />
+              <Bar dataKey="pemasukan" name="Pemasukan" fill="var(--chart-income)" radius={[5, 5, 0, 0]} maxBarSize={24} />
+              <Bar dataKey="pengeluaran" name="Pengeluaran" fill="var(--chart-expense)" radius={[5, 5, 0, 0]} maxBarSize={24} />
+            </BarChart>
+          </ResponsiveContainer>
+        </div>
+      </div>
+    </div>
+
+    <div className="dashboard-bottom-grid">
+      <div className="card padded-card">
+        <SectionHeading title="Tagihan Berikutnya" action={<button className="text-link" onClick={() => go('recurring')}>Jadwal <ArrowRight size={14} /></button>} />
+        {upcoming.length ? <div className="recent-list">
+          {upcoming.map(item => <div className="recent-row" key={item.id}>
+            <span className="bill-icon"><CalendarDays size={15} /></span>
+            <div className="recent-details"><strong>{item.title}</strong><span>{dateLabel(item.nextDate)}</span></div>
+            <strong className="amount">{rupiah(item.amount)}</strong>
+          </div>)}
+        </div> : <Empty title="Belum ada tagihan terjadwal" detail="Tambahkan jadwal untuk melihat tagihan berikutnya." />}
+      </div>
+      <div className="card padded-card">
+        <SectionHeading title="Status Anggaran" action={<button className="text-link" onClick={() => go('budgets')}>Kelola <ArrowRight size={14} /></button>} />
+        {budgets.length ? <div className="budget-mini-list">
+          {budgets.slice(0, 3).map(budget => {
+            const spent = categories.find(category => category.name === budget.category)?.value ?? 0;
+            const percent = Math.round(spent / budget.limit * 100);
+            return <div className="budget-mini" key={budget.id}>
+              <div className="budget-title"><span>{budget.category}</span><strong className={percent >= 80 ? 'warning-text' : ''}>{percent}%</strong></div>
+              <BudgetBar spent={spent} limit={budget.limit} />
+            </div>;
+          })}
+        </div> : <Empty title="Belum ada anggaran" detail="Tetapkan batas belanja untuk mulai memantau." action={<button className="button button-dark" onClick={() => open({ kind: 'budget' })}>Atur anggaran</button>} />}
+      </div>
+      <div className="card padded-card">
+        <SectionHeading title="Transaksi Terbaru" action={<button className="text-link" onClick={() => go('transactions')}>Lihat semua <ArrowRight size={14} /></button>} />
+        {recent.length ? <div className="recent-list">
+          {recent.map(entry => <div className="recent-row" key={entry.id}>
+            <EntrySymbol type={entry.type} />
+            <div className="recent-details"><strong>{entry.title}</strong><span>{entry.category} · {dateLabel(entry.date)}</span></div>
+            <strong className={`amount ${entry.type}`}>{entry.type === 'expense' ? '-' : entry.type === 'income' ? '+' : ''}{rupiah(entry.amount)}</strong>
+          </div>)}
+        </div> : <Empty title="Belum ada transaksi" detail="Pilih Catat Transaksi untuk mulai." />}
+      </div>
+    </div>
+  </section>;
 }
 
 function Transactions({ data, entries, open, remove }: { data: FinanceData; entries: Entry[]; open: (editor: Editor) => void; remove: (entry: Entry) => void }) {
@@ -430,7 +533,7 @@ function Reports({ data, current, categories, trend, period }: { data: FinanceDa
   const top = [...current.entries].filter(e => e.type === 'expense').sort((a, b) => b.amount - a.amount).slice(0, 5);
   const last = new Date(period.getFullYear(), period.getMonth() - 1, 1);
   const previous = metrics(data, last);
-  return <><PageHeading eyebrow="ANALITIK" title="Laporan Keuangan" description="Temukan pola dan buat keputusan yang lebih jelas." action={<><button className="button button-outline" onClick={() => downloadCsv(data, current.entries)}><Download size={17} /> CSV</button><button className="button button-outline" onClick={() => downloadXlsx(data, current.entries)}><Download size={17} /> Excel</button><button className="button button-dark" onClick={() => window.print()}><FileText size={17} /> Simpan PDF</button></>} /><div className="report-stats"><div className="card"><span>Rata-rata pemasukan 6 bulan</span><strong>{rupiah(Math.round(trend.reduce((a, b) => a + b.pemasukan, 0) / 6))}</strong></div><div className="card"><span>Rata-rata pengeluaran 6 bulan</span><strong>{rupiah(Math.round(trend.reduce((a, b) => a + b.pengeluaran, 0) / 6))}</strong></div><div className="card"><span>Rasio tabungan bulan ini</span><strong>{current.savingsRate}%</strong></div></div><div className="card chart-card report-chart"><SectionHeading title="Pergerakan Arus Kas" subtitle="Enam bulan terakhir" /><div className="report-area"><ResponsiveContainer width="100%" height="100%"><AreaChart data={trend}><defs><linearGradient id="incomeFill" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stopColor="#10b981" stopOpacity={.28} /><stop offset="100%" stopColor="#10b981" stopOpacity={0} /></linearGradient></defs><CartesianGrid vertical={false} stroke="var(--grid)" strokeDasharray="3 4" /><XAxis dataKey="name" axisLine={false} tickLine={false} tick={{ fill: 'var(--muted)', fontSize: 12 }} /><YAxis axisLine={false} tickLine={false} width={45} tickFormatter={value => `${value / 1_000_000} jt`} tick={{ fill: 'var(--muted)', fontSize: 11 }} /><Tooltip content={<ChartTip />} /><Area dataKey="pemasukan" name="Pemasukan" type="monotone" stroke="#10b981" fill="url(#incomeFill)" strokeWidth={3} /><Area dataKey="pengeluaran" name="Pengeluaran" type="monotone" stroke="#f43f5e" fill="transparent" strokeWidth={2} /></AreaChart></ResponsiveContainer></div></div><div className="report-bottom"><div className="card padded-card"><SectionHeading title="Pengeluaran per Kategori" subtitle={`${monthLabel(period)} dibanding bulan sebelumnya`} /><div className="category-report-list">{categories.length ? categories.map(c => { const before = byCategory(data, last).find(x => x.name === c.name)?.value || 0; return <div key={c.name}><div className="category-report-name"><span><i style={{ background: categoryColors[c.name] || '#94a3b8' }} />{c.name}</span><strong>{rupiah(c.value)}</strong></div><div className="mini-bars"><span style={{ width: `${Math.min(100, c.value / Math.max(...categories.map(x => x.value), 1) * 100)}%`, background: categoryColors[c.name] || '#94a3b8' }} /><span className="last-month-bar" style={{ width: `${Math.min(100, before / Math.max(...categories.map(x => x.value), 1) * 100)}%` }} /></div></div>; }) : <Empty title="Belum ada data" detail="Catat pengeluaran untuk melihat analitik." />}</div><p className="small-note">Total bulan lalu: {rupiah(previous.expense)}</p></div><div className="card padded-card"><SectionHeading title="Pengeluaran Terbesar" subtitle={`Lima transaksi teratas ${monthLabel(period)}`} /><div className="top-spend-list">{top.map((entry, index) => <div key={entry.id}><span className="rank">{String(index + 1).padStart(2, '0')}</span><div><strong>{entry.title}</strong><small>{entry.category} · {dateLabel(entry.date)}</small></div><strong>{rupiah(entry.amount)}</strong></div>)}</div></div></div></>;
+  return <><PageHeading eyebrow="ANALITIK" title="Laporan Keuangan" description="Temukan pola dan buat keputusan yang lebih jelas." action={<><button className="button button-outline" onClick={() => downloadCsv(data, current.entries)}><Download size={17} /> CSV</button><button className="button button-outline" onClick={() => downloadXlsx(data, current.entries)}><Download size={17} /> Excel</button><button className="button button-dark" onClick={() => window.print()}><FileText size={17} /> Simpan PDF</button></>} /><div className="report-stats"><div className="card"><span>Rata-rata pemasukan 6 bulan</span><strong>{rupiah(Math.round(trend.reduce((a, b) => a + b.pemasukan, 0) / 6))}</strong></div><div className="card"><span>Rata-rata pengeluaran 6 bulan</span><strong>{rupiah(Math.round(trend.reduce((a, b) => a + b.pengeluaran, 0) / 6))}</strong></div><div className="card"><span>Rasio tabungan bulan ini</span><strong>{current.savingsRate}%</strong></div></div><div className="card chart-card report-chart"><SectionHeading title="Pergerakan Arus Kas" subtitle="Enam bulan terakhir" /><div className="report-area"><ResponsiveContainer width="100%" height="100%"><AreaChart data={trend}><defs><linearGradient id="incomeFill" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stopColor="var(--chart-income)" stopOpacity={.28} /><stop offset="100%" stopColor="var(--chart-income)" stopOpacity={0} /></linearGradient></defs><CartesianGrid vertical={false} stroke="var(--grid)" strokeDasharray="3 4" /><XAxis dataKey="name" axisLine={false} tickLine={false} tick={{ fill: 'var(--muted)', fontSize: 12 }} /><YAxis axisLine={false} tickLine={false} width={45} tickFormatter={value => `${value / 1_000_000} jt`} tick={{ fill: 'var(--muted)', fontSize: 11 }} /><Tooltip content={<ChartTip />} /><Area dataKey="pemasukan" name="Pemasukan" type="monotone" stroke="var(--chart-income)" fill="url(#incomeFill)" strokeWidth={3} /><Area dataKey="pengeluaran" name="Pengeluaran" type="monotone" stroke="var(--chart-expense)" fill="transparent" strokeWidth={2} /></AreaChart></ResponsiveContainer></div></div><div className="report-bottom"><div className="card padded-card"><SectionHeading title="Pengeluaran per Kategori" subtitle={`${monthLabel(period)} dibanding bulan sebelumnya`} /><div className="category-report-list">{categories.length ? categories.map(c => { const before = byCategory(data, last).find(x => x.name === c.name)?.value || 0; return <div key={c.name}><div className="category-report-name"><span><i style={{ background: categoryColors[c.name] || '#94a3b8' }} />{c.name}</span><strong>{rupiah(c.value)}</strong></div><div className="mini-bars"><span style={{ width: `${Math.min(100, c.value / Math.max(...categories.map(x => x.value), 1) * 100)}%`, background: categoryColors[c.name] || '#94a3b8' }} /><span className="last-month-bar" style={{ width: `${Math.min(100, before / Math.max(...categories.map(x => x.value), 1) * 100)}%` }} /></div></div>; }) : <Empty title="Belum ada data" detail="Catat pengeluaran untuk melihat analitik." />}</div><p className="small-note">Total bulan lalu: {rupiah(previous.expense)}</p></div><div className="card padded-card"><SectionHeading title="Pengeluaran Terbesar" subtitle={`Lima transaksi teratas ${monthLabel(period)}`} /><div className="top-spend-list">{top.map((entry, index) => <div key={entry.id}><span className="rank">{String(index + 1).padStart(2, '0')}</span><div><strong>{entry.title}</strong><small>{entry.category} · {dateLabel(entry.date)}</small></div><strong>{rupiah(entry.amount)}</strong></div>)}</div></div></div></>;
 }
 
 function SettingsPage({ data, dark, setDark, commit, serverMode, onLogout }: { data: FinanceData; dark: boolean; setDark: (next: boolean) => void; commit: (next: FinanceData, message: string) => void; serverMode: boolean; onLogout: () => void }) {

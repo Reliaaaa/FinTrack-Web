@@ -16,8 +16,22 @@ permissions:
 
 jobs:
   verify:
-    name: Typecheck, unit tests, audit, build
+    name: Build and PostgreSQL integration tests
     runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_USER: fintrack
+          POSTGRES_PASSWORD: fintrack_ci_only
+          POSTGRES_DB: fintrack
+        ports:
+          - 5432/tcp
+        options: >-
+          --health-cmd "pg_isready -U fintrack -d fintrack"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
@@ -29,6 +43,15 @@ jobs:
       - run: npm test
       - run: npm audit --audit-level=high
       - run: npm run build
+      - name: Check schema migrations and recurring transactions
+        run: node --import tsx scripts/check-database.mjs
+        env:
+          DB_INTEGRATION_TEST: '1'
+          DATABASE_URL: postgresql://fintrack:fintrack_ci_only@localhost:${{ job.services.postgres.ports[5432] }}/fintrack
+      - name: Check account isolation and password reset with PostgreSQL
+        run: node --test tests/integration/postgres.test.mjs
+        env:
+          FINTRACK_TEST_ADMIN_URL: postgresql://fintrack:fintrack_ci_only@localhost:${{ job.services.postgres.ports[5432] }}/fintrack
       - uses: actions/upload-artifact@v4
         with:
           name: fintrack-next-build
@@ -69,6 +92,7 @@ jobs:
     permissions:
       contents: write
       issues: write
+      pull-requests: write
     steps:
       - uses: actions/github-script@v7
         continue-on-error: true
@@ -86,9 +110,10 @@ jobs:
               `Branch: ${branch}`,
               `Commit: ${sha}`,
               `Versi: ${sha.slice(0, 7)}`,
-              `Typecheck, unit test, audit, build: ${verify}`,
+              `Typecheck, unit test, audit, build, PostgreSQL: ${verify}`,
               `Chromium UI test: ${ui}`,
               status === 'GAGAL' ? 'Lihat langkah gagal pada tautan run, perbaiki, lalu jalankan ulang CI sebelum merge.' : 'Seluruh gate otomatis pada PR ini lulus.',
             ].join('\n');
+            await core.summary.addRaw(body).write();
             if (pr) await github.rest.issues.createComment({ owner: context.repo.owner, repo: context.repo.repo, issue_number: context.issue.number, body });
             else await github.rest.repos.createCommitComment({ owner: context.repo.owner, repo: context.repo.repo, commit_sha: sha, body });

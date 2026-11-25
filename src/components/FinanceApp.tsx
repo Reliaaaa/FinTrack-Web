@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Activity, ArrowDownLeft, ArrowDownRight, ArrowLeftRight, ArrowRight, ArrowUpRight, BarChart3, Bell, CalendarDays, Check, ChevronDown, CircleHelp, CreditCard, Download, FileText, Filter, LayoutDashboard, LogOut, Menu, Moon, MoreHorizontal, Plus, Repeat2, Search, Settings, ShieldCheck, Sun, Trash2, TrendingUp, Wallet as WalletIcon, X } from 'lucide-react';
 import { Area, AreaChart, Bar, BarChart, CartesianGrid, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts';
 import { Budget, categoryColors, Entry, EntryType, expenseCategories, FinanceData, incomeCategories, monthKey, budgetsForMonth, Recurring, seedData, Wallet, walletBalance } from '@/lib/finance';
@@ -10,25 +10,45 @@ import { download, downloadCsv, downloadIcs, downloadXlsx } from '@/lib/export';
 
 type Tab = 'dashboard' | 'transactions' | 'wallets' | 'budgets' | 'recurring' | 'reports' | 'settings';
 type Editor = { kind: 'transaction'; item?: Entry } | { kind: 'wallet'; item?: Wallet } | { kind: 'budget'; item?: Budget } | { kind: 'recurring'; item?: Recurring } | null;
+type AuthOptions = { google: boolean; passwordReset: boolean };
+type AccountSnapshot = { user: { id: string }; version: string; data: FinanceData };
 const nav: { id: Tab; label: string; icon: typeof LayoutDashboard }[] = [
   { id: 'dashboard', label: 'Dasbor', icon: LayoutDashboard }, { id: 'transactions', label: 'Transaksi', icon: ArrowLeftRight }, { id: 'wallets', label: 'Dompet & Akun', icon: WalletIcon }, { id: 'budgets', label: 'Anggaran', icon: BarChart3 }, { id: 'recurring', label: 'Tagihan Berulang', icon: Repeat2 }, { id: 'reports', label: 'Laporan & Analitik', icon: TrendingUp }, { id: 'settings', label: 'Pengaturan', icon: Settings },
 ];
-const today = () => new Date().toISOString().slice(0, 10);
+const today = () => { const date = new Date(); return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`; };
 const id = () => crypto.randomUUID();
 const money = (value: string) => Number(value.replace(/[^\d]/g, '')) || 0;
+const demoKey = 'fintrack-demo-v1';
+const sessionChangeKey = 'fintrack-session-change';
+const draftKey = (accountId: string) => `fintrack-pending-change:${accountId}`;
+
+function signalSessionChange() {
+  try { localStorage.setItem(sessionChangeKey, crypto.randomUUID()); } catch { /* verify when the tab gains focus */ }
+}
+
+function readDemoData(): FinanceData {
+  try {
+    const raw = localStorage.getItem(demoKey);
+    if (raw) return JSON.parse(raw);
+  } catch { /* fall back to sample data */ }
+  return seedData();
+}
 
 export default function FinanceApp() {
   const [data, setData] = useState<FinanceData>(() => seedData());
   const [ready, setReady] = useState(false);
   const [serverMode, setServerMode] = useState(false);
   const [authRequired, setAuthRequired] = useState(false);
+  const [accountEnabled, setAccountEnabled] = useState(false);
+  const [authOptions, setAuthOptions] = useState<AuthOptions>({ google: false, passwordReset: false });
   const [serviceIssue, setServiceIssue] = useState('');
+  const [authNotice, setAuthNotice] = useState('');
+  const [checkingSession, setCheckingSession] = useState(false);
   const [conflict, setConflict] = useState(false);
   const [saving, setSaving] = useState(false);
   const versionRef = useRef('1');
   const accountRef = useRef('');
   const savingRef = useRef(false);
-  const draftKey = () => `fintrack-pending-change:${accountRef.current}`;
   const [tab, setTabState] = useState<Tab>('dashboard');
   const [period, setPeriod] = useState(() => new Date());
   const [dark, setDark] = useState(false);
@@ -36,6 +56,83 @@ export default function FinanceApp() {
   const editorOpener = useRef<HTMLElement | null>(null);
   const [toast, setToast] = useState('');
   const [mobileMenu, setMobileMenu] = useState(false);
+
+  const restoreAccount = useCallback((snapshot: AccountSnapshot) => {
+    accountRef.current = snapshot.user.id;
+    versionRef.current = snapshot.version;
+    let draft: FinanceData | undefined;
+    try {
+      const raw = sessionStorage.getItem(draftKey(snapshot.user.id));
+      if (raw) {
+        const pending = JSON.parse(raw) as FinanceData;
+        if (pending && Array.isArray(pending.wallets) && Array.isArray(pending.entries)
+          && Array.isArray(pending.budgets) && Array.isArray(pending.recurring)) draft = pending;
+      }
+    } catch { /* use the server snapshot */ }
+    setData(draft ?? snapshot.data);
+    setConflict(Boolean(draft));
+    setServerMode(true);
+    setAuthRequired(false);
+    setAuthNotice('');
+    setCheckingSession(false);
+    signalSessionChange();
+  }, []);
+
+  const hideAccount = useCallback((notice = '') => {
+    accountRef.current = '';
+    setData(seedData());
+    setConflict(false);
+    setEditor(null);
+    setMobileMenu(false);
+    setServerMode(false);
+    setAuthNotice(notice);
+    setAuthRequired(true);
+    setCheckingSession(false);
+    setToast('');
+  }, []);
+
+  useEffect(() => {
+    let disposed = false;
+    let checking = false;
+    let sessionChanged = false;
+    const verifySession = async () => {
+      const accountId = accountRef.current;
+      if (!accountId || checking) return;
+      const mustVerify = sessionChanged;
+      sessionChanged = false;
+      checking = true;
+      try {
+        const response = await fetch('/api/v1/auth/me', { cache: 'no-store', signal: AbortSignal.timeout(5000) });
+        if (!response.ok && response.status !== 401) throw new Error('Gagal memeriksa sesi');
+        const changed = response.status === 401 || (await response.json()).user?.id !== accountId;
+        if (changed && !disposed && accountRef.current === accountId) hideAccount('Sesi akun berubah. Silakan masuk untuk melanjutkan.');
+      } catch {
+        if (mustVerify && !disposed && accountRef.current === accountId) hideAccount('Sesi belum dapat diperiksa. Silakan masuk lagi.');
+      } finally {
+        checking = false;
+        if (sessionChanged && !disposed) void verifySession();
+        else if (mustVerify && !disposed) setCheckingSession(false);
+      }
+    };
+    const onStorage = (event: StorageEvent) => {
+      if (event.key !== sessionChangeKey || !accountRef.current) return;
+      sessionChanged = true;
+      setCheckingSession(true);
+      void verifySession();
+    };
+    const onVisibility = () => {
+      if (document.visibilityState === 'visible') void verifySession();
+    };
+    window.addEventListener('storage', onStorage);
+    window.addEventListener('focus', verifySession);
+    document.addEventListener('visibilitychange', onVisibility);
+    return () => {
+      disposed = true;
+      window.removeEventListener('storage', onStorage);
+      window.removeEventListener('focus', verifySession);
+      document.removeEventListener('visibilitychange', onVisibility);
+    };
+  }, [hideAccount]);
 
   useEffect(() => {
     const savedTab = location.pathname.slice(1) as Tab;
@@ -49,35 +146,23 @@ export default function FinanceApp() {
         const body = await response.json();
         if (response.status >= 500) {
           setServiceIssue(body.error || 'Server sedang tidak tersedia. Mode demo lokal aktif.');
-          const raw = localStorage.getItem('fintrack-demo-v1');
-          if (raw) setData(JSON.parse(raw));
+          setData(readDemoData());
         } else if (body.configured) {
-          setServerMode(true);
+          setAccountEnabled(true);
+          if (body.authOptions) setAuthOptions(body.authOptions);
           if (response.status === 401) setAuthRequired(true);
-          else if (body.data) {
-            accountRef.current = body.user?.id || '';
-            versionRef.current = body.version || '1';
-            const draft = accountRef.current ? sessionStorage.getItem(draftKey()) : null;
-            if (draft) {
-              try {
-                const pending = JSON.parse(draft) as FinanceData;
-                if (pending && Array.isArray(pending.wallets) && Array.isArray(pending.entries) && Array.isArray(pending.budgets) && Array.isArray(pending.recurring)) { setData(pending); setConflict(true); }
-                else setData(body.data);
-              } catch { setData(body.data); }
-            } else setData(body.data);
-          }
+          else if (response.ok && body.user?.id && body.data && body.version) restoreAccount(body);
+          else throw new Error('Respons akun tidak lengkap');
         } else {
-          const raw = localStorage.getItem('fintrack-demo-v1');
-          if (raw) setData(JSON.parse(raw));
+          setData(readDemoData());
         }
       } catch {
         setServiceIssue('Koneksi server gagal. Mode demo lokal aktif; perubahan di sini tidak tersinkron ke akun.');
-        const raw = localStorage.getItem('fintrack-demo-v1');
-        if (raw) { try { setData(JSON.parse(raw)); } catch { /* use seed */ } }
+        setData(readDemoData());
       } finally { setReady(true); }
     })();
     return () => window.removeEventListener('popstate', onPop);
-  }, []);
+  }, [restoreAccount]);
 
   useEffect(() => { if ('serviceWorker' in navigator && process.env.NODE_ENV === 'production') navigator.serviceWorker.register('/sw.js').catch(() => undefined); }, []);
 
@@ -93,20 +178,36 @@ export default function FinanceApp() {
     setData(next);
     if (serverMode) {
       savingRef.current = true; setSaving(true);
+      const accountId = accountRef.current;
       try {
-        const response = await fetch('/api/v1/data', { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ version: versionRef.current, data: next }) });
+        const response = await fetch('/api/v1/data', { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ accountId, version: versionRef.current, data: next }) });
+        if (response.status === 401 || response.status === 412) {
+          try { sessionStorage.setItem(draftKey(accountId), JSON.stringify(next)); } catch { /* still clear the screen */ }
+          if (accountId === accountRef.current) hideAccount('Sesi akun berubah. Silakan masuk untuk melanjutkan.');
+          return false;
+        }
         if (response.status === 409) {
-          sessionStorage.setItem(draftKey(), JSON.stringify(next));
+          sessionStorage.setItem(draftKey(accountId), JSON.stringify(next));
+          if (accountId !== accountRef.current) return false;
           setConflict(true);
           setToast('Perubahan di perangkat lain terdeteksi. Draf lokal tetap tersimpan.');
           return true;
         }
+        if (accountId !== accountRef.current) return false;
         if (!response.ok) throw new Error((await response.json()).error || 'Gagal menyimpan');
-        versionRef.current = (await response.json()).version;
-      } catch (error) { setData(previous); setToast(error instanceof Error ? error.message : 'Gagal menyimpan'); return false; }
+        const { version } = await response.json();
+        if (accountId !== accountRef.current) return false;
+        versionRef.current = version;
+      } catch (error) {
+        if (accountId === accountRef.current) {
+          setData(previous);
+          setToast(error instanceof Error ? error.message : 'Gagal menyimpan');
+        }
+        return false;
+      }
       finally { savingRef.current = false; setSaving(false); }
     } else {
-      try { localStorage.setItem('fintrack-demo-v1', JSON.stringify(next)); }
+      try { localStorage.setItem(demoKey, JSON.stringify(next)); }
       catch { setData(previous); setToast('Penyimpanan browser penuh. Ekspor data dan hapus struk lama.'); return false; }
     }
     setToast(message);
@@ -114,14 +215,24 @@ export default function FinanceApp() {
   };
   const saveConflictDraft = () => download(new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' }), 'fintrack-draf-konflik.json');
   const loadLatest = async () => {
+    const accountId = accountRef.current;
     saveConflictDraft();
     try {
       const response = await fetch('/api/v1/bootstrap', { cache: 'no-store' });
+      if (response.status === 401 && accountRef.current === accountId) {
+        hideAccount('Sesi akun berubah. Silakan masuk untuk melanjutkan.');
+        return;
+      }
       if (!response.ok) throw new Error('Gagal mengambil data terbaru');
       const body = await response.json();
+      if (accountRef.current !== accountId) return;
+      if (body.user?.id !== accountId) {
+        hideAccount('Sesi akun berubah. Silakan masuk untuk melanjutkan.');
+        return;
+      }
       if (!body.data || !body.version) throw new Error('Respons server tidak lengkap');
       setData(body.data); versionRef.current = body.version; setConflict(false);
-      sessionStorage.removeItem(draftKey());
+      sessionStorage.removeItem(draftKey(accountId));
       setToast('Data server terbaru dimuat. Draf lokal sudah diunduh.');
     } catch (error) { setToast(error instanceof Error ? error.message : 'Gagal memuat data'); }
   };
@@ -129,6 +240,23 @@ export default function FinanceApp() {
   const categories = useMemo(() => byCategory(data, period), [data, period]);
   const trend = useMemo(() => cashflow(data, period), [data, period]);
   const activeWallets = data.wallets.filter(w => !w.archived);
+  const enterDemo = () => {
+    accountRef.current = '';
+    setData(readDemoData());
+    setServerMode(false);
+    setAuthRequired(false);
+    setConflict(false);
+    setServiceIssue('');
+  };
+  const logout = async () => {
+    if (savingRef.current) { setToast('Tunggu hingga perubahan selesai disimpan.'); return; }
+    try {
+      const response = await fetch('/api/v1/auth/logout', { method: 'POST' });
+      if (!response.ok) throw new Error('Gagal keluar. Coba lagi.');
+      hideAccount();
+      signalSessionChange();
+    } catch { setToast('Gagal keluar. Coba lagi.'); }
+  };
   const deleteEntry = (entry: Entry) => { if (confirm(`Hapus transaksi “${entry.title}”?`)) commit({ ...data, entries: data.entries.filter(e => e.id !== entry.id) }, 'Transaksi dihapus'); };
   const deleteWallet = (wallet: Wallet) => {
     if (data.entries.some(e => e.walletId === wallet.id || e.targetWalletId === wallet.id) || data.recurring.some(r => r.walletId === wallet.id)) { setToast('Dompet masih dipakai transaksi atau jadwal. Arsipkan saja.'); return; }
@@ -153,8 +281,17 @@ export default function FinanceApp() {
     if (saved) closeEditor();
   };
   if (!ready) return <div className="loading-screen"><div className="logo-mark"><TrendingUp size={23} /></div><span>Menyiapkan FinTrack…</span></div>;
-  if (authRequired) return <AuthScreen onSuccess={async () => { const result = await fetch('/api/v1/bootstrap'); const body = await result.json(); if (result.ok) { accountRef.current = body.user?.id || ''; versionRef.current = body.version || '1'; const raw = accountRef.current ? sessionStorage.getItem(draftKey()) : null; if (raw) { try { const draft = JSON.parse(raw) as FinanceData; if (draft && Array.isArray(draft.wallets) && Array.isArray(draft.entries) && Array.isArray(draft.budgets) && Array.isArray(draft.recurring)) { setData(draft); setConflict(true); } else setData(body.data); } catch { setData(body.data); } } else { setData(body.data); setConflict(false); } setAuthRequired(false); } }} onDemo={() => { setServerMode(false); setAuthRequired(false); setConflict(false); const raw = localStorage.getItem('fintrack-demo-v1'); if (raw) setData(JSON.parse(raw)); }} />;
-  return <div className="app-shell">
+  if (authRequired) return <AuthScreen options={authOptions} sessionNotice={authNotice} onSuccess={async () => {
+    const response = await fetch('/api/v1/bootstrap', { cache: 'no-store' });
+    const body = await response.json();
+    if (!response.ok || !body.user?.id || !body.data || !body.version) throw new Error('Gagal memuat akun. Coba lagi.');
+    if (body.authOptions) setAuthOptions(body.authOptions);
+    setServiceIssue('');
+    restoreAccount(body);
+  }} onDemo={enterDemo} />;
+  return <>
+  {checkingSession && <div className="loading-screen" role="status">Memeriksa sesi akun…</div>}
+  <div className="app-shell" style={checkingSession ? { display: 'none' } : undefined}>
     <aside className={`sidebar ${mobileMenu ? 'sidebar-open' : ''}`}>
       <button className="brand" onClick={() => setTab('dashboard')} aria-label="FinTrack, buka dasbor"><span className="logo-mark"><TrendingUp size={21} strokeWidth={2.6} /></span><span><strong>FinTrack</strong><small>KEUANGAN PRIBADI</small></span></button>
       <button className="button button-dark sidebar-cta" onClick={() => openEditor({ kind: 'transaction' })}><Plus size={18} /> Catat Transaksi</button>
@@ -165,7 +302,7 @@ export default function FinanceApp() {
     <div className="main-column">
       <header className="topbar"><div className="topbar-left"><button className="icon-button mobile-menu" onClick={() => setMobileMenu(!mobileMenu)} aria-label="Buka menu"><Menu size={22} /></button><span className="topbar-title">{nav.find(n => n.id === tab)?.label}</span><span className="topbar-divider" /><span className="topbar-subtitle">Ruang keuangan Anda</span>{saving && <span className="status-pill blue" role="status">Menyimpan…</span>}</div><div className="topbar-actions"><label className="period-select"><CalendarDays size={16} /><input type="month" aria-label="Pilih bulan" value={`${period.getFullYear()}-${String(period.getMonth() + 1).padStart(2, '0')}`} onChange={e => { if (e.target.value) { const [year, month] = e.target.value.split('-').map(Number); setPeriod(new Date(year, month - 1, 1)); } }} /></label><button className="search-trigger" onClick={() => setTab('transactions')}><Search size={17} /> Cari transaksi...</button><button className="icon-button" aria-label={dark ? 'Aktifkan tema terang' : 'Aktifkan tema gelap'} onClick={() => setDark(!dark)}>{dark ? <Sun size={19} /> : <Moon size={19} />}</button><button className="icon-button notification" aria-label="Lihat anggaran" onClick={() => setTab('budgets')}><Bell size={19} />{budgetsForMonth(data, period).some(b => current.entries.filter(e => e.type === 'expense' && e.category === b.category).reduce((a, e) => a + e.amount, 0) >= b.limit * .8) && <i />}</button><span className="avatar header-avatar">{data.name.charAt(0).toUpperCase()}</span></div></header>
       <main className="content">
-        {!serverMode && <div className="demo-banner" role={serviceIssue ? 'alert' : undefined}><ShieldCheck size={17} /><span><strong>{serviceIssue ? 'Server tidak tersedia.' : 'Mode demo.'}</strong> {serviceIssue || 'Data tersimpan di browser ini. Hubungkan PostgreSQL untuk akun dan sinkronisasi lintas perangkat.'}</span><button onClick={() => setTab('settings')}>Pelajari <ArrowRight size={14} /></button></div>}
+        {!serverMode && <div className="demo-banner" role={serviceIssue ? 'alert' : undefined}><ShieldCheck size={17} /><span><strong>{serviceIssue ? 'Server tidak tersedia.' : 'Mode demo.'}</strong> {serviceIssue || 'Data demo hanya tersimpan di browser ini.'}</span>{accountEnabled ? <button onClick={() => location.reload()}>Masuk ke akun <ArrowRight size={14} /></button> : <button onClick={() => setTab('settings')}>Pelajari <ArrowRight size={14} /></button>}</div>}
         {serverMode && conflict && <div className="demo-banner" role="alert"><ShieldCheck size={17} /><span><strong>Konflik data.</strong> Perubahan lokal Anda tersimpan sebagai draf di browser. Unduh salinannya sebelum memakai data server terbaru.</span><button onClick={saveConflictDraft}>Unduh draf <Download size={14} /></button><button onClick={loadLatest}>Muat data terbaru <ArrowRight size={14} /></button></div>}
         {tab === 'dashboard' && <Dashboard data={data} current={current} categories={categories} trend={trend} period={period} open={openEditor} go={setTab} />}
         {tab === 'transactions' && <Transactions data={data} entries={data.entries} open={openEditor} remove={deleteEntry} />}
@@ -173,14 +310,15 @@ export default function FinanceApp() {
         {tab === 'budgets' && <Budgets data={data} current={current} period={period} open={openEditor} commit={commit} />}
         {tab === 'recurring' && <RecurringPage data={data} open={openEditor} commit={commit} serverMode={serverMode} />}
         {tab === 'reports' && <Reports data={data} current={current} categories={categories} trend={trend} period={period} />}
-        {tab === 'settings' && <SettingsPage data={data} dark={dark} setDark={setDark} commit={commit} serverMode={serverMode} onLogout={async () => { await fetch('/api/v1/auth/logout', { method: 'POST' }); setAuthRequired(true); }} />}
+        {tab === 'settings' && <SettingsPage data={data} dark={dark} setDark={setDark} commit={commit} serverMode={serverMode} onLogout={logout} />}
       </main>
     </div>
     <nav className="bottom-nav" aria-label="Navigasi bawah">{(['dashboard', 'transactions', 'budgets', 'wallets'] as Tab[]).map((item, index) => { const n = nav.find(x => x.id === item)!; return <div className="bottom-slot" key={item}>{index === 2 && <button className="mobile-add" onClick={() => openEditor({ kind: 'transaction' })} aria-label="Catat transaksi"><Plus size={25} /></button>}<button className={tab === item ? 'selected' : ''} onClick={() => setTab(item)}><n.icon size={20} /><span>{item === 'dashboard' ? 'Dasbor' : item === 'transactions' ? 'Transaksi' : item === 'budgets' ? 'Anggaran' : 'Dompet'}</span></button></div>; })}</nav>
     {editor && <EditorDialog editor={editor} data={data} period={period} saving={saving} onClose={closeEditor} onSave={saveEditor} />}
     {toast && <div className="toast" role="status"><Check size={17} />{toast}<button onClick={() => setToast('')} aria-label="Tutup notifikasi"><X size={15} /></button></div>}
     {mobileMenu && <button className="menu-backdrop" aria-label="Tutup menu" onClick={() => setMobileMenu(false)} />}
-  </div>;
+  </div>
+  </>;
 }
 
 function PageHeading({ eyebrow, title, description, action }: { eyebrow: string; title: string; description?: string; action?: React.ReactNode }) { return <div className="page-heading"><div><span className="eyebrow">{eyebrow}</span><h1>{title}</h1>{description && <p>{description}</p>}</div>{action && <div className="heading-actions">{action}</div>}</div>; }
@@ -192,7 +330,7 @@ function ChartTip({ active, payload, label }: { active?: boolean; payload?: { na
 
 function Dashboard({ data, current, categories, trend, period, open, go }: { data: FinanceData; current: ReturnType<typeof metrics>; categories: ReturnType<typeof byCategory>; trend: ReturnType<typeof cashflow>; period: Date; open: (editor: Editor) => void; go: (tab: Tab) => void }) {
   const cards = [
-    { label: 'Total Kekayaan Bersih', value: current.balance, icon: WalletIcon, color: 'navy', foot: `${data.wallets.filter(w => !w.archived).length} dompet aktif` },
+    { label: 'Total Kekayaan Bersih', value: current.balance, icon: WalletIcon, color: 'navy', foot: `${data.wallets.length} dompet tercatat` },
     { label: 'Pemasukan Bulan Ini', value: current.income, icon: ArrowDownLeft, color: 'green', foot: 'Dari semua dompet' },
     { label: 'Pengeluaran Bulan Ini', value: current.expense, icon: ArrowUpRight, color: 'rose', foot: 'Bulan berjalan' },
     { label: 'Sisa Anggaran Aman', value: current.budgetRemaining, icon: ShieldCheck, color: 'blue', foot: current.budgetLimit ? `${Math.round(current.spending / current.budgetLimit * 100)}% terpakai` : 'Atur anggaran pertama' },
@@ -316,21 +454,107 @@ function EditorDialog({ editor, data, period, saving, onClose, onSave }: { edito
     {error && <p className="form-error" role="alert">{error}</p>}<div className="modal-footer"><button type="button" className="button button-outline" onClick={onClose}>Batal</button><button type="submit" className="button button-dark" disabled={saving}>{saving ? 'Menyimpan…' : `Simpan ${editor.kind === 'transaction' ? 'Transaksi' : heading}`}</button></div></form></div></div>;
 }
 
-function AuthScreen({ onSuccess, onDemo }: { onSuccess: () => void; onDemo: () => void }) {
+function AuthScreen({ options, sessionNotice, onSuccess, onDemo }: {
+  options: AuthOptions;
+  sessionNotice: string;
+  onSuccess: () => Promise<void>;
+  onDemo: () => void;
+}) {
   const [register, setRegister] = useState(false);
+  const [forgot, setForgot] = useState(false);
+  const [notice, setNotice] = useState('');
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
   const [busy, setBusy] = useState(false);
+
+  useEffect(() => {
+    const url = new URL(location.href);
+    const reason = url.searchParams.get('auth_error');
+    if (!reason) return;
+    setError(reason === 'email_exists' ? 'Email sudah terdaftar. Masuk dengan kata sandi Anda.' : 'Masuk dengan Google gagal. Coba lagi.');
+    url.searchParams.delete('auth_error');
+    history.replaceState(null, '', url);
+  }, []);
+
   const submit = async (event: React.FormEvent) => {
-    event.preventDefault(); setBusy(true); setError('');
+    event.preventDefault();
+    setBusy(true);
+    setError('');
     try {
-      const response = await fetch(`/api/v1/auth/${register ? 'register' : 'login'}`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ name, email, password }) });
+      const action = forgot ? 'forgot-password' : register ? 'register' : 'login';
+      const response = await fetch('/api/v1/auth/' + action, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(forgot ? { email } : { name, email, password }),
+      });
       const body = await response.json();
-      if (!response.ok) throw new Error(body.error || 'Tidak dapat masuk');
-      onSuccess();
-    } catch (error) { setError(error instanceof Error ? error.message : 'Terjadi kesalahan'); } finally { setBusy(false); }
+      if (!response.ok) throw new Error(body.error || 'Permintaan gagal. Coba lagi.');
+      if (forgot) {
+        setNotice('Jika email terdaftar, tautan pemulihan akan dikirim.');
+        setForgot(false);
+      } else {
+        await onSuccess();
+      }
+    } catch (error) {
+      setError(error instanceof Error ? error.message : 'Terjadi kesalahan');
+    } finally {
+      setBusy(false);
+    }
   };
-  return <main className="auth-page"><div className="auth-form-side"><div className="auth-brand"><span className="logo-mark"><TrendingUp size={21} /></span><strong>FinTrack</strong></div><div className="auth-form-wrap"><span className="eyebrow">KEUANGAN LEBIH JELAS</span><h1>{register ? 'Mulai perjalanan finansial Anda' : 'Selamat datang kembali'}</h1><p>Kelola arus kas, anggaran, dan tabungan Anda dalam satu dasbor.</p><form onSubmit={submit}>{register && <label>Nama lengkap<input value={name} onChange={e => setName(e.target.value)} required maxLength={60} /></label>}<label>Alamat email<input type="email" value={email} onChange={e => setEmail(e.target.value)} required autoComplete="email" placeholder="nama@email.com" /></label><label>Kata sandi<input type="password" value={password} onChange={e => setPassword(e.target.value)} required minLength={8} autoComplete={register ? 'new-password' : 'current-password'} placeholder="Minimal 8 karakter" /></label>{error && <p className="form-error" role="alert">{error}</p>}<button className="button button-dark auth-submit" type="submit" disabled={busy}>{busy ? 'Memproses…' : register ? 'Buat Akun' : 'Masuk ke Dasbor'} <ArrowRight size={17} /></button></form><p className="auth-switch">{register ? 'Sudah punya akun?' : 'Belum punya akun?'} <button onClick={() => { setRegister(!register); setError(''); }}>{register ? 'Masuk' : 'Daftar gratis'}</button></p><div className="auth-demo"><span>Ingin melihat dulu?</span><button onClick={onDemo}>Jelajahi mode demo <ArrowRight size={15} /></button></div></div><small className="auth-copyright">© {new Date().getFullYear()} FinTrack Web</small></div><div className="auth-visual"><div className="auth-glow" /><span className="auth-visual-eyebrow">KENDALI DI TANGAN ANDA</span><h2>Satu tempat untuk setiap keputusan keuangan.</h2><p>Lihat yang masuk, pahami yang keluar, dan rencanakan langkah berikutnya dengan tenang.</p><div className="auth-preview"><span>Total saldo gabungan</span><strong>Rp 48.750.000</strong><div className="auth-preview-bars">{[35, 47, 43, 62, 56, 73, 68, 85, 76, 96, 90, 100].map((height, i) => <i key={i} style={{ height: `${height}%` }} />)}</div><div className="auth-preview-foot"><span><TrendingUp size={16} /> +8,4% bulan ini</span><span>Keuangan bertumbuh</span></div></div></div></main>;
+  const toggleForgot = () => {
+    setForgot(!forgot);
+    setRegister(false);
+    setPassword('');
+    setError('');
+    setNotice('');
+  };
+  const toggleRegister = () => {
+    setRegister(!register);
+    setForgot(false);
+    setPassword('');
+    setError('');
+    setNotice('');
+  };
+  return (
+    <main className="auth-page">
+      <div className="auth-form-side">
+        <div className="auth-brand"><span className="logo-mark"><TrendingUp size={21} /></span><strong>FinTrack</strong></div>
+        <div className="auth-form-wrap">
+          <span className="eyebrow">KEUANGAN LEBIH JELAS</span>
+          <h1>{forgot ? 'Pulihkan kata sandi' : register ? 'Mulai perjalanan finansial Anda' : 'Selamat datang kembali'}</h1>
+          <p>Kelola arus kas, anggaran, dan tabungan Anda dalam satu dasbor.</p>
+          {sessionNotice && <p role="status">{sessionNotice}</p>}
+          <form onSubmit={submit}>
+            {register && <label>Nama lengkap<input value={name} onChange={e => setName(e.target.value)} required maxLength={60} /></label>}
+            <label>Alamat email<input type="email" value={email} onChange={e => setEmail(e.target.value)} required autoComplete="email" placeholder="nama@email.com" /></label>
+            {!forgot && <label>Kata sandi<input type="password" value={password} onChange={e => setPassword(e.target.value)} required minLength={8} maxLength={register ? 72 : 128} autoComplete={register ? 'new-password' : 'current-password'} placeholder="Minimal 8 karakter" /></label>}
+            {notice && <p role="status">{notice}</p>}
+            {error && <p className="form-error" role="alert">{error}</p>}
+            <button className="button button-dark auth-submit" type="submit" disabled={busy}>
+              {busy ? 'Memproses…' : forgot ? 'Kirim tautan pemulihan' : register ? 'Buat Akun' : 'Masuk ke Dasbor'} <ArrowRight size={17} />
+            </button>
+          </form>
+          {options.passwordReset && !register && <p className="auth-switch"><button type="button" disabled={busy} onClick={toggleForgot}>{forgot ? 'Kembali ke masuk' : 'Lupa kata sandi?'}</button></p>}
+          {options.google && !forgot && <p className="auth-switch"><a href="/api/v1/auth/google">Lanjutkan dengan Google</a></p>}
+          {!forgot && <p className="auth-switch">{register ? 'Sudah punya akun?' : 'Belum punya akun?'} <button type="button" disabled={busy} onClick={toggleRegister}>{register ? 'Masuk' : 'Daftar gratis'}</button></p>}
+          <div className="auth-demo"><span>Ingin melihat dulu?</span><button type="button" disabled={busy} onClick={onDemo}>Jelajahi mode demo <ArrowRight size={15} /></button></div>
+        </div>
+        <small className="auth-copyright">© {new Date().getFullYear()} FinTrack Web</small>
+      </div>
+      <div className="auth-visual">
+        <div className="auth-glow" />
+        <span className="auth-visual-eyebrow">KENDALI DI TANGAN ANDA</span>
+        <h2>Satu tempat untuk setiap keputusan keuangan.</h2>
+        <p>Lihat yang masuk, pahami yang keluar, dan rencanakan langkah berikutnya dengan tenang.</p>
+        <div className="auth-preview">
+          <span>Total saldo gabungan</span>
+          <strong>Rp 48.750.000</strong>
+          <div className="auth-preview-bars">{[35, 47, 43, 62, 56, 68, 85, 76, 96, 90, 100].map((height, i) => <i key={i} style={{ height: height + '%' }} />)}</div>
+          <div className="auth-preview-foot"><span><TrendingUp size={16} /> +8,4% bulan ini</span><span>Keuangan bertumbuh</span></div>
+        </div>
+      </div>
+    </main>
+  );
 }

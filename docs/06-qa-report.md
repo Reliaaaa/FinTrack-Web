@@ -1,27 +1,35 @@
-# Laporan QA — 15 November 2026
+# Laporan QA — 25 November 2026
 
-## Gate otomatis
+## Gate terbaru
 
-- `npm run typecheck`: lulus.
-- `npm test`: 8/8 lulus. Cakupan: transfer tidak mengubah kekayaan bersih, ringkasan sesuai bulan, tanggal berulang akhir bulan, validasi data API, anggaran terpisah per bulan, dan batas body JSON tanpa `Content-Length`.
-- `npm run build`: lulus; semua route aplikasi dan API terbangun.
-- `npm run test:ui`: 3/3 lulus di Chromium. Tes otomatis mencakup tambah/hapus transaksi dan ketahanan setelah reload, anggaran per bulan, tujuh route mobile 375 px tanpa overflow, dan pemulihan fokus modal.
+| Gate | Hasil | Bukti utama |
+| --- | --- | --- |
+| `npm run typecheck` | Lulus | TypeScript tanpa error. |
+| `npm test` | 13/13 lulus | Validasi data, nominal/saldo, periode, jadwal, batas JSON, dan mock Google/Resend. |
+| `npm run build` | Lulus | 22 halaman/route statis dan dinamis, termasuk `/api/v1/auth/me`, terbangun. |
+| `FINTRACK_TEST_ADMIN_URL=… node --test tests/integration/postgres.test.mjs` | 7/7 lulus | PostgreSQL 16 lokal, database QA acak yang dibuat dan dihapus otomatis. |
+| `npm run test:ui` | 8/8 lulus | Chromium lokal; server Next dijalankan tunggal oleh Playwright. |
 
-## Uji browser tambahan
+Tes integrasi menolak URL database di luar localhost dan hanya membuat database bernama `fintrack_qa_<acak>`. Tes memakai `next start` dari build terakhir, lalu menghentikannya dan menghapus database. Tidak ada database QA tersisa sesudah pengujian. Untuk mengulang: jalankan `docker compose up -d postgres`, `npm run build`, lalu `FINTRACK_TEST_ADMIN_URL='postgresql://<user>:<password>@localhost:5432/postgres' node --test tests/integration/postgres.test.mjs`. Role PostgreSQL harus boleh `CREATE DATABASE`.
 
-Semua tujuh route dibuka langsung pada lebar 375, 768, 1024, dan 1440 px, tanpa error JavaScript. Transaksi tambah/ubah/hapus, tambah dompet, tambah jadwal berulang, filter kategori, ekspor CSV dan XLSX, tema gelap yang bertahan setelah reload, serta modal keyboard diuji secara interaktif. File XLSX terunduh dan struktur ZIP-nya tervalidasi. Pada mode offline dengan service worker, shell tetap terbuka dan menampilkan peringatan jelas bahwa data berada di mode demo lokal.
+## Cakupan yang terbukti
 
-Simulasi respons server `500` membuktikan modal tetap terbuka dan input transaksi tetap ada. Simulasi konflik `409` setelah perubahan keamanan membuktikan draf tersimpan di `sessionStorage` per ID akun, tetap ada setelah reload pada tab yang sama, dan tidak muncul pada tab baru setelah tab asal ditutup.
+- Database nyata: registrasi dua akun, snapshot awal terpisah, simpan dan baca ulang transaksi/dompet/anggaran, isolasi akun, penolakan versi usang dengan `409`, dan penolakan payload akun A memakai cookie akun B dengan `412` tanpa mengubah B.
+- Autentikasi: login, logout, `GET /api/v1/auth/me` sesuai sesi aktif dan menolak sesi lama, token reset sekali pakai, kata sandi lama ditolak, seluruh sesi lama dicabut saat reset, data keuangan tetap ada, dan balapan login/reset tidak meninggalkan sesi dengan kata sandi lama. Token reset dimasukkan langsung sebagai fixture ke database; pengiriman email nyata tidak diuji.
+- Browser: tambah/hapus transaksi demo dan reload, anggaran per bulan, tujuh route pada 375 px tanpa overflow, fokus modal kembali setelah Escape, konflik menyimpan draf di `sessionStorage` pada tab yang sama dan tidak membawanya ke tab baru, link reset dengan token di fragment pada 375/1440 px, serta keluar akun lalu masuk demo tanpa membawa data akun ke tampilan atau `localStorage` demo. Sinyal pergantian sesi antar-tab memicu `GET /api/v1/auth/me`: data akun lama tersembunyi saat pemeriksaan tertunda dan layar masuk tampil setelah ID akun berbeda.
+
+Uji manual pada 15 November mencakup tujuh route di lebar 375, 768, 1024, dan 1440 px, filter kategori/tanggal, dompet, tema, ekspor CSV/XLSX, dan shell offline. Rangkaian manual tersebut belum diulang seluruhnya setelah perubahan autentikasi terbaru; hasilnya dicatat sebagai bukti historis, bukan gate rilis terbaru.
 
 ## Siklus bug
 
-| ID | Reproduksi | Keparahan | Perbaikan | Uji ulang |
-| --- | --- | --- | --- | --- |
-| QA-01 | Buka Laporan/Tagihan di 375 px atau Dasbor di 768 px; konten melebar 1–9 px. | P1 | Header sempit dan daftar transaksi dibatasi ke lebar viewport. | Lulus pada empat breakpoint dan seluruh route. |
-| QA-02 | Putuskan jaringan saat `GET /api/v1/bootstrap`; aplikasi masuk mode demo tanpa alasan koneksi terlihat. | P1 | Banner kini menyatakan server tidak tersedia dan perubahan lokal tidak tersinkron. | Lulus dengan intersepsi jaringan dan reload offline. |
-
-Siklus uji ulang penuh untuk cakupan di atas tidak menemukan bug P0/P1 baru. Ini **bukan** pernyataan bahwa semua fitur P0/P1 PRD telah selesai.
+| ID | Reproduksi | Keparahan | Status dan uji ulang |
+| --- | --- | --- | --- |
+| QA-01 | Buka Laporan/Tagihan di 375 px atau Dasbor di 768 px; konten melebar 1–9 px. | P1 | Ditutup; perbaikan layout dan smoke tujuh route mobile lulus. |
+| QA-02 | Putuskan jaringan saat bootstrap; aplikasi masuk demo tanpa penjelasan. | P1 | Ditutup; banner menyatakan server tidak tersedia dan perubahan demo tidak tersinkron. |
+| QA-03 | Cookie sesi akun B dipakai tab dengan snapshot A lalu `PUT /data`. | P1 | Ditutup di API; `accountId` tidak cocok menghasilkan `412`, snapshot B tidak berubah pada DB nyata. |
+| QA-04 | Keluar dari akun saat belum ada data demo, lalu pilih “Jelajahi mode demo”. | P1 | Ditutup; tes Chromium membuktikan data A hilang dari UI dan tidak disalin ke `localStorage` demo. |
+| QA-05 | Ganti sesi ke B di tab lain ketika tab A masih menampilkan data pribadi. | P1 | Ditutup; tes Chromium membuktikan data A langsung tersembunyi selama verifikasi sesi dan layar masuk tampil bila ID berbeda. |
 
 ## Batas pengujian
 
-PostgreSQL nyata tidak tersedia dalam workspace ini. Registrasi/login, migrasi, otorisasi antar-pengguna, pembukuan cron, dan konflik versi SQL belum diuji end-to-end pada database. Belum ada pengukuran Lighthouse/Core Web Vitals, audit aksesibilitas menyeluruh, atau uji beban data besar. Google OAuth dan reset kata sandi masih belum diimplementasikan.
+PostgreSQL yang diuji adalah container lokal, bukan database produksi. Google OAuth dan Resend hanya diuji dengan mock; kredensial/provider nyata dan pengiriman email belum diuji. Uji browser terbaru memakai Chromium saja, dan sebagian besar pemeriksaan responsif otomatis berada pada 375 px. Belum ada audit aksesibilitas menyeluruh, pengukuran Lighthouse/Core Web Vitals, pengujian beban data besar, atau uji pemulihan backup. Implementasi masih memakai snapshot JSONB per akun, bukan CRUD granular dan paginasi server yang dijelaskan dalam PRD.

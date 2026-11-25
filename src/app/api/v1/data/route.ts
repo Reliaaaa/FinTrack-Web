@@ -5,7 +5,7 @@ import { financeSchema } from '@/server/validation';
 import { z } from 'zod';
 import { PayloadTooLarge, readBoundedJson } from '@/server/body';
 export const runtime = 'nodejs';
-const updateSchema = z.object({ version: z.string().regex(/^\d+$/), data: financeSchema });
+const updateSchema = z.object({ accountId: z.uuid(), version: z.string().regex(/^\d+$/), data: financeSchema });
 export async function GET() {
   if (!configured()) return failure('Database belum dikonfigurasi', 503);
   const user = await currentUser(); if (!user) return failure('Sesi tidak valid', 401);
@@ -18,6 +18,7 @@ export async function PUT(request: NextRequest) {
   const user = await currentUser(); if (!user) return failure('Sesi tidak valid', 401);
   let body: unknown; try { body = await readBoundedJson(request, 5_000_000); } catch (error) { return error instanceof PayloadTooLarge ? failure('Data terlalu besar', 413) : failure('JSON tidak valid'); }
   const parsed = updateSchema.safeParse(body); if (!parsed.success) return failure('Data keuangan atau versi tidak valid');
+  if (parsed.data.accountId !== user.id) return failure('Sesi akun berubah. Muat ulang halaman untuk melanjutkan.', 412);
   const client = await db().connect();
   try {
     await client.query('BEGIN');

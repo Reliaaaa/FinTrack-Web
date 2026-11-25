@@ -4,7 +4,7 @@ on:
   workflow_dispatch:
     inputs:
       target:
-        description: Deploy preview dari dev atau production dari main
+        description: Deploy preview dari feature/dev atau production dari main
         required: true
         default: preview
         type: choice
@@ -18,7 +18,7 @@ permissions:
 jobs:
   deploy:
     name: Validate and deploy
-    if: ${{ (inputs.target == 'preview' && github.ref == 'refs/heads/dev') || (inputs.target == 'production' && github.ref == 'refs/heads/main') }}
+    if: ${{ (inputs.target == 'preview' && (github.ref == 'refs/heads/dev' || startsWith(github.ref, 'refs/heads/feature/'))) || (inputs.target == 'production' && github.ref == 'refs/heads/main') }}
     runs-on: ubuntu-latest
     env:
       VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}

@@ -4,10 +4,11 @@ import { z } from 'zod';
 import { NextRequest, NextResponse } from 'next/server';
 import { configured, db, ensureSchema } from '@/server/db';
 import { failure, rateLimit, sameOrigin, setSession } from '@/server/auth';
+import { newPasswordSchema } from '@/server/auth-providers';
 import { PayloadTooLarge, readBoundedJson } from '@/server/body';
 import type { FinanceData } from '@/lib/finance';
 export const runtime = 'nodejs';
-const schema = z.object({ name: z.string().trim().min(1).max(60), email: z.email().max(255), password: z.string().min(8).max(128) });
+const schema = z.object({ name: z.string().trim().min(1).max(60), email: z.email().max(255), password: newPasswordSchema });
 export async function POST(request: NextRequest) {
   if (!configured()) return failure('Database belum dikonfigurasi', 503);
   if (!await sameOrigin()) return failure('Origin tidak valid', 403);

@@ -1,0 +1,119 @@
+name: Client build
+
+on:
+  push:
+    branches:
+      - 'feature/**'
+      - dev
+  pull_request:
+    branches:
+      - dev
+      - main
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  verify:
+    name: Build and PostgreSQL integration tests
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_USER: fintrack
+          POSTGRES_PASSWORD: fintrack_ci_only
+          POSTGRES_DB: fintrack
+        ports:
+          - 5432/tcp
+        options: >-
+          --health-cmd "pg_isready -U fintrack -d fintrack"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+      - run: npm ci
+      - run: npm run typecheck
+      - run: npm test
+      - run: npm audit --audit-level=high
+      - run: npm run build
+      - name: Check schema migrations and recurring transactions
+        run: node --import tsx scripts/check-database.mjs
+        env:
+          DB_INTEGRATION_TEST: '1'
+          DATABASE_URL: postgresql://fintrack:fintrack_ci_only@localhost:${{ job.services.postgres.ports[5432] }}/fintrack
+      - name: Check account isolation and password reset with PostgreSQL
+        run: node --test tests/integration/postgres.test.mjs
+        env:
+          FINTRACK_TEST_ADMIN_URL: postgresql://fintrack:fintrack_ci_only@localhost:${{ job.services.postgres.ports[5432] }}/fintrack
+      - uses: actions/upload-artifact@v4
+        with:
+          name: fintrack-next-build
+          path: |
+            .next/BUILD_ID
+            .next/server
+            .next/static
+          retention-days: 7
+          include-hidden-files: true
+
+  ui:
+    name: Chromium UI tests
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+      - run: npm ci
+      - run: npx playwright install --with-deps chromium
+      - run: npm run test:ui
+      - uses: actions/upload-artifact@v4
+        if: failure()
+        with:
+          name: playwright-results
+          path: |
+            playwright-report
+            test-results
+          if-no-files-found: ignore
+          retention-days: 7
+
+  report:
+    name: Report build status
+    if: always()
+    needs: [verify, ui]
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      issues: write
+      pull-requests: write
+    steps:
+      - uses: actions/github-script@v7
+        continue-on-error: true
+        with:
+          script: |
+            const verify = '${{ needs.verify.result }}';
+            const ui = '${{ needs.ui.result }}';
+            const status = verify === 'success' && ui === 'success' ? 'SUKSES' : 'GAGAL';
+            const pr = context.payload.pull_request;
+            const branch = pr?.head.ref || context.ref.replace('refs/heads/', '');
+            const sha = pr?.head.sha || context.sha;
+            const body = [
+              `**Client build: ${status}**`,
+              `Run #${context.runNumber}: https://github.com/${context.repo.owner}/${context.repo.repo}/actions/runs/${context.runId}`,
+              `Branch: ${branch}`,
+              `Commit: ${sha}`,
+              `Versi: ${sha.slice(0, 7)}`,
+              `Typecheck, unit test, audit, build, PostgreSQL: ${verify}`,
+              `Chromium UI test: ${ui}`,
+              status === 'GAGAL' ? 'Lihat langkah gagal pada tautan run, perbaiki, lalu jalankan ulang CI sebelum merge.' : 'Seluruh gate otomatis pada PR ini lulus.',
+            ].join('\n');
+            await core.summary.addRaw(body).write();
+            if (pr) await github.rest.issues.createComment({ owner: context.repo.owner, repo: context.repo.repo, issue_number: context.issue.number, body });
+            else await github.rest.repos.createCommitComment({ owner: context.repo.owner, repo: context.repo.repo, commit_sha: sha, body });

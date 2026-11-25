@@ -15,8 +15,15 @@ export async function POST(request: NextRequest) {
   let input: unknown; try { input = await readBoundedJson(request, 4096); } catch (error) { return error instanceof PayloadTooLarge ? failure('Permintaan terlalu besar', 413) : failure('JSON tidak valid'); }
   const parsed = schema.safeParse(input); if (!parsed.success) return failure('Email atau kata sandi tidak valid');
   if (!await rateLimit(`login:email:${parsed.data.email.toLowerCase()}`, 10)) return failure('Terlalu banyak percobaan. Coba lagi nanti.', 429);
-  const result = await db().query<{ id: string; password_hash: string }>('SELECT id,password_hash FROM users WHERE email=$1', [parsed.data.email.toLowerCase()]);
-  const user = result.rows[0];
-  if (!user || !await compare(parsed.data.password, user.password_hash)) return failure('Email atau kata sandi salah', 401);
-  const response = NextResponse.json({ ok: true }); await setSession(response, user.id); return response;
+  const client = await db().connect();
+  try {
+    await client.query('BEGIN');
+    const result = await client.query<{ id: string; password_hash: string }>('SELECT id,password_hash FROM users WHERE email=$1 FOR UPDATE', [parsed.data.email.toLowerCase()]);
+    const user = result.rows[0];
+    if (!user || !await compare(parsed.data.password, user.password_hash)) { await client.query('ROLLBACK'); return failure('Email atau kata sandi salah', 401); }
+    const response = NextResponse.json({ ok: true });
+    await setSession(response, user.id, client);
+    await client.query('COMMIT');
+    return response;
+  } catch { await client.query('ROLLBACK'); return failure('Tidak dapat masuk', 500); } finally { client.release(); }
 }

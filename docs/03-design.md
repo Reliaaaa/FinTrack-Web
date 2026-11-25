@@ -6,6 +6,8 @@ Dokumen ini memetakan UI yang **sudah ada** pada 16 November 2026 dan state yang
 
 ```text
 Login / Daftar ── berhasil ──> Dasbor
+  ├── Lanjutkan dengan Google ── OAuth callback ──> Dasbor
+  └── Lupa kata sandi ── email tautan ──> /reset ──> Login
                             ├── Transaksi ──> Tambah / Ubah Transaksi
                             ├── Dompet ──> Tambah / Ubah Dompet
                             ├── Anggaran ──> Tambah / Ubah Anggaran
@@ -38,7 +40,8 @@ DESKTOP                                      MOBILE
 
 | Layar / fitur | Tujuan dan komponen utama | Loading | Kosong | Error | Sukses |
 | --- | --- | --- | --- | --- | --- |
-| Login/Daftar | Email, kata sandi, nama saat daftar, tombol masuk/daftar, tautan mode demo | Tombol “Memproses…” dinonaktifkan | Tidak relevan | Pesan dekat form untuk kredensial/validasi; saat database gagal, aplikasi memberi pesan server tidak tersedia | Masuk ke dasbor dengan data akun |
+| Login/Daftar | Email, kata sandi, nama saat daftar, Google OAuth, lupa kata sandi, tautan mode demo | Tombol “Memproses…” dinonaktifkan | Tidak relevan | Pesan dekat form untuk kredensial/validasi; kegagalan OAuth dan layanan tak tersedia ditampilkan | Masuk ke dasbor dengan data akun; pengiriman tautan pemulihan diberi pesan umum |
+| Reset kata sandi | Tautan email membuka `/reset` dan form kata sandi baru | Tombol “Memproses…” dinonaktifkan | Token hilang membuat tombol simpan nonaktif | Token salah/kedaluwarsa atau kegagalan server ditampilkan | Pesan berhasil dan tautan kembali ke login |
 | Proteksi akun | Memisahkan data demo dari akun serta menolak sesi hilang | Layar “Menyiapkan FinTrack…” | Akun baru menampilkan daftar kosong setelah login | Sesi hilang membuka form login; error database tampak pada banner demo | Data akun tampil setelah bootstrap |
 | Dasbor | Empat KPI, grafik enam bulan, donat kategori, anggaran, transaksi terakhir | Layar persiapan saat bootstrap | Donat dan anggaran memiliki pesan serta ajakan mencatat/atur; transaksi baru belum memiliki empty state tersendiri | Banner server saat bootstrap gagal | Angka, grafik, dan daftar mengikuti perubahan data |
 | Dompet | Total saldo, kartu per dompet, tambah/ubah/arsip/hapus | Bersama bootstrap; indikator “Menyimpan…” saat penulisan akun | Kartu “Tambah Dompet Baru” | Hapus dompet yang masih dipakai ditolak lewat toast | Toast; saldo dan ringkasan berubah |
@@ -47,7 +50,7 @@ DESKTOP                                      MOBILE
 | Navigasi responsif | Sidebar, header, bottom nav, modal | Tidak relevan | Tidak relevan | Halaman URL tak dikenal memberi 404 | Tab aktif, URL, dan browser Back selaras |
 | Konflik perubahan akun | Banner konflik menyediakan unduh draf lokal dan muat data server terbaru | Tombol simpan diblokir selama konflik | Tidak muncul tanpa konflik | Pesan `role="alert"` menerangkan bahwa draf lokal tersimpan | Draf diunduh sebelum data terbaru dimuat |
 
-State target yang **belum lengkap**: Google OAuth dan lupa kata sandi belum punya alur UI; paginasi transaksi masih di browser. Form menampilkan status penulisan akun, mengembalikan kesalahan simpan melalui toast, dan melakukan rollback bila jaringan/server gagal. Filter tanggal dan kategori serta pagu khusus tiap bulan sudah tersedia.
+Alur UI Google OAuth, lupa kata sandi, dan reset sudah tersedia, tetapi perlu pengujian dengan Google, Resend, dan PostgreSQL nyata sebelum dinyatakan selesai. Paginasi transaksi masih di browser. Form menampilkan status penulisan akun, mengembalikan kesalahan simpan melalui toast, dan melakukan rollback bila jaringan/server gagal. Filter tanggal dan kategori serta pagu khusus tiap bulan sudah tersedia.
 
 ## Token dan komponen
 

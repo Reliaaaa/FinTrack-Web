@@ -13,6 +13,13 @@ test('transfer moves money without changing total wealth', () => {
   assert.equal(metrics(data, new Date(2026, 10, 15)).expense, 0);
 });
 
+test('archiving a wallet does not change net worth', () => {
+  const data = seedData(new Date(2026, 10, 15));
+  const before = metrics(data, new Date(2026, 10, 15)).balance;
+  data.wallets[0].archived = true;
+  assert.equal(metrics(data, new Date(2026, 10, 15)).balance, before);
+});
+
 test('monthly totals respect the selected month', () => {
   const data = seedData(new Date(2026, 10, 15));
   const current = metrics(data, new Date(2026, 10, 15));

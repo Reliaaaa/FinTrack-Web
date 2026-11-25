@@ -4,7 +4,7 @@ export function metrics(data: FinanceData, date: Date) {
   const entries = monthEntries(data, date);
   const income = entries.filter(e => e.type === 'income').reduce((a, e) => a + e.amount, 0);
   const expense = entries.filter(e => e.type === 'expense').reduce((a, e) => a + e.amount, 0);
-  const balance = data.wallets.filter(w => !w.archived).reduce((a, w) => a + walletBalance(data, w.id), 0);
+  const balance = data.wallets.reduce((a, w) => a + walletBalance(data, w.id), 0);
   const monthlyBudgets = budgetsForMonth(data, date);
   const budgetLimit = monthlyBudgets.reduce((a, b) => a + b.limit, 0);
   const spending = monthlyBudgets.reduce((a, b) => a + entries.filter(e => e.type === 'expense' && e.category === b.category).reduce((s, e) => s + e.amount, 0), 0);

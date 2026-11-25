@@ -25,7 +25,7 @@
 - PostgreSQL nyata tidak tersedia untuk uji otorisasi silang akun, migrasi, pembatasan percobaan, atau cron. Klaim keamanan backend hanya berasal dari pembacaan kode dan tes unit batas body.
 - CSP masih mengizinkan `'unsafe-inline'` untuk skrip dan style karena prerender/hidrasi Next.js dan style grafik. Nonce per permintaan perlu dirancang untuk CSP yang lebih kuat.
 - `sessionStorage` draf konflik dan `localStorage` demo tidak terenkripsi terhadap skrip same-origin atau orang dengan akses ke profil browser. Jangan simpan data keuangan penting dalam mode demo.
-- Foto struk masih berada di JSONB, bukan object storage dengan ACL dan retensi terpisah. Kategori, audit trail, verifikasi email, reset kata sandi, serta Google OAuth belum tersedia.
+- Foto struk masih berada di JSONB, bukan object storage dengan ACL dan retensi terpisah. Kategori, audit trail, dan verifikasi email belum tersedia. Alur Google OAuth memakai state cookie dan menolak penautan otomatis ke akun kata sandi dengan email sama; reset kata sandi memakai token sekali pakai yang di-hash, berlaku 30 menit, dan mencabut sesi lama. Keduanya masih perlu uji integrasi dengan Google/Resend/PostgreSQL nyata serta pemeriksaan keamanan provider di deployment.
 - Rate limit per email membatasi percobaan, tetapi dapat menyebabkan penolakan layanan pada email target. Tabel `auth_attempts` belum memiliki pembersihan berkala. Konfigurasi firewall dan backup database perlu diverifikasi di hosting.
 - Audit dependensi (`npm audit`) melaporkan **0 vulnerabilities** setelah override; hasil ini tidak menggantikan pentest aplikasi.
 

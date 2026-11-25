@@ -86,8 +86,8 @@ paths:
     get:
       summary: Status konfigurasi dan snapshot akun
       responses:
-        '200': { description: 'Demo {configured:false} atau akun {configured:true,data,version}; akun private, no-store' }
-        '401': { description: 'Database aktif tetapi belum masuk' }
+        '200': { description: 'Demo {configured:false} atau akun {configured:true,user,data,version,authOptions}; private, no-store' }
+        '401': { description: 'Database aktif tetapi belum masuk; authOptions berisi status Google dan reset kata sandi' }
         '503': { description: 'Database tidak tersedia' }
   /api/v1/auth/register:
     post:
@@ -102,7 +102,7 @@ paths:
               properties:
                 name: { type: string, minLength: 1, maxLength: 60 }
                 email: { type: string, format: email }
-                password: { type: string, minLength: 8, maxLength: 128 }
+                password: { type: string, minLength: 8, maxLength: 128, description: 'Maksimum 72 byte UTF-8 untuk bcrypt' }
       responses:
         '201': { description: 'Akun dibuat; cookie sesi dikirim' }
         '400': { description: 'JSON atau field tidak valid' }
@@ -132,12 +132,71 @@ paths:
         '413': { description: 'Body melebihi 4 KiB' }
         '429': { description: 'Terlalu banyak percobaan' }
         '503': { description: 'Database belum dikonfigurasi' }
+  /api/v1/auth/google:
+    get:
+      summary: Mulai OAuth Google dengan state sekali pakai
+      responses:
+        '307': { description: 'Redirect ke Google dengan cookie state HTTP-only' }
+        '302': { description: 'Redirect ke halaman masuk bila provider belum dikonfigurasi' }
+  /api/v1/auth/google/callback:
+    get:
+      summary: Verifikasi state dan identitas Google lalu buat sesi
+      description: 'Subjek Google menjadi identitas akun; email akun yang sudah ada tidak ditautkan otomatis.'
+      responses:
+        '307': { description: 'Sesi dibuat dan pengguna diarahkan ke dasbor' }
+        '302': { description: 'State, provider, atau identitas tidak valid' }
+  /api/v1/auth/forgot-password:
+    post:
+      summary: Kirim tautan pemulihan jika akun ditemukan
+      description: 'Respons sama untuk email yang ditemukan maupun tidak; tautan berlaku 30 menit dan token berada pada URL fragment.'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [email]
+              properties:
+                email: { type: string, format: email }
+      responses:
+        '200': { description: 'Permintaan diterima tanpa mengungkap keberadaan akun' }
+        '400': { description: 'Input tidak valid' }
+        '403': { description: 'Origin tidak cocok' }
+        '429': { description: 'Terlalu banyak percobaan' }
+        '503': { description: 'Database atau layanan email belum dikonfigurasi' }
+  /api/v1/auth/reset-password:
+    post:
+      summary: Gunakan token sekali pakai dan cabut semua sesi akun
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [token, password]
+              properties:
+                token: { type: string, pattern: '^[a-f0-9]{64}$' }
+                password: { type: string, minLength: 8, maxLength: 128, description: 'Maksimum 72 byte UTF-8' }
+      responses:
+        '200': { description: 'Kata sandi berubah dan semua sesi dicabut' }
+        '400': { description: 'Input atau token tidak valid atau telah kedaluwarsa' }
+        '403': { description: 'Origin tidak cocok' }
+        '429': { description: 'Terlalu banyak percobaan' }
+        '503': { description: 'Database belum dikonfigurasi' }
   /api/v1/auth/logout:
     post:
       summary: Cabut sesi saat ini
       security: [{ session: [] }]
       responses:
         '200': { description: 'Sesi dihapus' }
+  /api/v1/auth/me:
+    get:
+      summary: Periksa identitas sesi aktif
+      security: [{ session: [] }]
+      responses:
+        '200': { description: '{user:{id}}; private, no-store' }
+        '401': { description: 'Sesi tidak valid' }
+        '503': { description: 'Basis data tidak tersedia' }
   /api/v1/data:
     get:
       summary: Ambil snapshot dan versi akun
@@ -155,8 +214,9 @@ paths:
           application/json:
             schema:
               type: object
-              required: [version, data]
+              required: [accountId, version, data]
               properties:
+                accountId: { type: string, format: uuid, description: 'user.id dari bootstrap untuk mendeteksi pergantian akun' }
                 version: { type: string, pattern: '^\\d+$', description: 'Versi dari bootstrap atau GET data' }
                 data: { $ref: '#/components/schemas/FinanceData' }
       responses:
@@ -166,6 +226,7 @@ paths:
         '403': { description: 'Origin tidak cocok' }
         '404': { description: 'Data akun tidak ditemukan' }
         '409': { description: '{error,version}; snapshot server berubah, data klien tidak ditulis' }
+        '412': { description: 'Akun pada snapshot berbeda dari akun yang sedang masuk' }
         '413': { description: 'Body melebihi 5 MB' }
         '503': { description: 'Database belum dikonfigurasi' }
   /api/v1/health:
@@ -186,6 +247,8 @@ paths:
 ## Perilaku konflik
 
 PostgreSQL menaikkan `finance_data.version` pada `PUT` dan cron. Browser hanya mengirim `PUT` dengan versi terakhir yang diterima. Jika versi sudah berubah, server mengembalikan `409` tanpa mengubah data. Browser mempertahankan perubahan lokal dalam memori dan `sessionStorage` (`fintrack-pending-change:<user-id>`), menampilkan pemberitahuan, serta menawarkan unduh draf JSON sebelum memuat snapshot server terbaru. Draf tidak digabung otomatis agar tidak menimpa transaksi dari tab lain.
+
+`accountId` berasal dari `user.id` pada bootstrap. Jika pengguna berganti akun pada tab lain dalam browser yang sama, server mengembalikan `412` untuk snapshot dari akun yang sebelumnya aktif. Otorisasi tetap memakai sesi pada server.
 
 Nominal adalah angka rupiah tanpa sen; tanggal memakai `YYYY-MM-DD`. Kode saat ini memakai satu endpoint dokumen, belum endpoint granular dan paginasi server yang tercantum pada PRD.
 Body JSON login dan registrasi dibatasi 4 KiB, sedangkan `PUT /api/v1/data` dibatasi 5 MB, termasuk bila `Content-Length` tidak dikirim. Percobaan login dibatasi 20 kali per IP dan 10 kali per email; registrasi 10 kali per IP dan 5 kali per email dalam jendela 15 menit.

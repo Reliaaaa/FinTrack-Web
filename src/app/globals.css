@@ -148,3 +148,63 @@
   .main-column, .dashboard-overview .kpi-primary { background: white; color: #0b2b26; }
   .dashboard-overview .kpi-primary :is(.kpi-head, .kpi-caption, .kpi-value) { color: #0b2b26; }
 }
+
+/* Rising labels keep the same accessible name throughout the motion. */
+.roll-label {
+  position: relative;
+  display: inline-block;
+  max-width: 100%;
+  overflow: hidden;
+  line-height: 1.18;
+  vertical-align: middle;
+}
+.roll-accessible {
+  position: absolute;
+  inset: 0 auto auto 0;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
+.roll-word { display: inline-block; white-space: nowrap; }
+.roll-letter {
+  position: relative;
+  display: inline-block;
+  transition: transform .35s cubic-bezier(.76, 0, .24, 1);
+  transition-delay: calc(var(--roll-index) * 20ms);
+}
+.roll-letter::after {
+  content: attr(data-letter);
+  position: absolute;
+  inset: 100% auto auto 0;
+}
+.motion-button {
+  transition: scale .18s ease, filter .18s ease, background-color .18s ease, color .18s ease, border-color .18s ease;
+}
+.button.motion-button:hover { transform: none; }
+.motion-button:not(:disabled):active, a:has(.roll-label):active { scale: .96; filter: brightness(.92); }
+.motion-button:not(:disabled):focus-visible .roll-letter, a:focus-visible .roll-letter { transform: translateY(-100%); }
+@media (hover: hover) and (pointer: fine) {
+  .motion-button:not(:disabled):hover .roll-letter, a:hover .roll-letter { transform: translateY(-100%); }
+}
+
+.sidebar-nav { position: relative; isolation: isolate; }
+.sidebar-indicator {
+  position: absolute;
+  inset: 0 0 auto;
+  z-index: -1;
+  border-radius: 9px;
+  background: #daf1de;
+  pointer-events: none;
+  transition: transform .34s cubic-bezier(.22, 1, .36, 1), height .34s cubic-bezier(.22, 1, .36, 1);
+}
+.sidebar .sidebar-nav[data-indicator="ready"] .nav-item { background: transparent; color: #daf1de; }
+.sidebar .sidebar-nav[data-indicator="ready"] .nav-item[data-highlighted] { color: #0b2b26; }
+.sidebar .sidebar-nav[data-indicator="ready"] .nav-item:focus-visible { outline-color: #8eb69b; }
+
+@media (prefers-reduced-motion: reduce) {
+  .roll-label .roll-letter { transform: none !important; transition: none; }
+  .motion-button, .sidebar-indicator { transition: none; }
+  .motion-button:not(:disabled):active, a:has(.roll-label):active { scale: none; }
+}

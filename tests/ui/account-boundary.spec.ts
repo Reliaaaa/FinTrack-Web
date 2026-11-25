@@ -1,6 +1,6 @@
 import { test, expect } from '@playwright/test';
 
-test('keluar lalu jelajahi demo tidak membawa atau menyimpan data akun', async ({ page }) => {
+test('keluar lalu gunakan mode lokal tidak membawa atau menyimpan data akun', async ({ page }) => {
   const accountData = {
     name: 'Pemilik Rahasia QA',
     wallets: [{ id: 'cash', name: 'Dompet Rahasia QA', type: 'cash', openingBalance: 100000, color: '#10b981' }],
@@ -16,8 +16,8 @@ test('keluar lalu jelajahi demo tidak membawa atau menyimpan data akun', async (
   await page.getByRole('navigation', { name: 'Navigasi utama' }).getByRole('button', { name: 'Pengaturan' }).click();
   await page.getByRole('button', { name: 'Keluar' }).click();
   await expect(page.getByRole('heading', { name: 'Selamat datang kembali' })).toBeVisible();
-  await page.getByRole('button', { name: 'Jelajahi mode demo' }).click();
-  await expect(page.getByText('Mode demo.', { exact: true })).toBeVisible();
+  await page.getByRole('button', { name: 'Gunakan tanpa akun' }).click();
+  await expect(page.getByText('Mode lokal.', { exact: true })).toBeVisible();
   await page.getByRole('navigation', { name: 'Navigasi utama' }).getByRole('button', { name: 'Transaksi' }).click();
   await expect(page.getByText('AKUN-RAHASIA-QA')).toHaveCount(0);
   expect(await page.evaluate(() => localStorage.getItem('fintrack-demo-v1'))).toBeNull();

@@ -100,6 +100,7 @@ test('PostgreSQL: akun terisolasi, snapshot persisten, konflik versi, reset dan 
       assert.equal(firstB.status, 200);
       assert.notEqual(firstA.json.user.id, firstB.json.user.id);
       accountAId = firstA.json.user.id;
+      assert.equal((await api(base, '/api/v1/auth/me', { cookie: a })).json.user.id, accountAId);
       assert.equal(firstA.json.version, '1');
       assert.equal(firstB.json.version, '1');
       assert.deepEqual(firstA.json.data.entries, []);
@@ -161,6 +162,7 @@ test('PostgreSQL: akun terisolasi, snapshot persisten, konflik versi, reset dan 
       assert.equal((await api(base, '/api/v1/auth/reset-password', { method: 'POST', body: { token: resetToken, password: newPassword } })).status, 400);
       assert.equal((await api(base, '/api/v1/data', { cookie: a })).status, 401);
       assert.equal((await api(base, '/api/v1/data', { cookie: secondSession })).status, 401);
+      assert.equal((await api(base, '/api/v1/auth/me', { cookie: a })).status, 401);
       assert.equal((await api(base, '/api/v1/auth/login', { method: 'POST', body: { email: emailA, password } })).status, 401);
       const fresh = await api(base, '/api/v1/auth/login', { method: 'POST', body: { email: emailA, password: newPassword } });
       assert.equal(fresh.status, 200);

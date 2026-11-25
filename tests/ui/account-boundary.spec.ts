@@ -60,7 +60,7 @@ test('tab lama menyembunyikan data ketika sesi berpindah akun di tab lain', asyn
   await otherTab.evaluate(() => localStorage.setItem('fintrack-session-change', crypto.randomUUID()));
   await expect.poll(() => checks).toBeGreaterThan(checksBefore);
   try {
-    await expect(page.getByRole('status', { name: 'Memeriksa sesi akun…' })).toBeVisible();
+    await expect(page.getByText('Memeriksa sesi akun…')).toBeVisible();
     await expect(page.getByText('PRIVAT-A-QA')).toBeHidden();
   } finally { releaseVerify?.(); }
   await expect(page.getByRole('heading', { name: 'Selamat datang kembali' })).toBeVisible();

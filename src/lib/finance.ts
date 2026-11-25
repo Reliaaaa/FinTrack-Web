@@ -13,6 +13,16 @@ export const categoryColors: Record<string, string> = {
   'Makanan & Minuman': '#10b981', Transportasi: '#3b82f6', 'Tagihan & Utilitas': '#f59e0b', Belanja: '#f43f5e', Hiburan: '#8b5cf6', Kesehatan: '#14b8a6', Pendidikan: '#6366f1', Gaji: '#10b981', Bonus: '#22c55e', Usaha: '#0ea5e9', Investasi: '#8b5cf6', Lainnya: '#94a3b8',
 };
 
+export function newFinanceData(name: string): FinanceData {
+  return {
+    name,
+    wallets: [{ id: 'cash', name: 'Tunai', type: 'cash', openingBalance: 0, color: '#10b981' }],
+    entries: [],
+    budgets: [],
+    recurring: [],
+  };
+}
+
 export function seedData(today = new Date()): FinanceData {
   const d = (day: number, offset = 0) => {
     const value = new Date(today.getFullYear(), today.getMonth() + offset, day);

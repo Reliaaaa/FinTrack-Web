@@ -1,8 +1,8 @@
 # FinTrack Web
 
-Aplikasi pencatat keuangan pribadi berbahasa Indonesia. Dibangun dengan Next.js, React, TypeScript, PostgreSQL, dan Recharts. Antarmuka mengikuti spesifikasi UI dan enam layar ekspor Google Stitch yang disertakan di [`docs/`](docs/). Animasi dibuat ringan, menghormati preferensi **reduced motion**, dan mengambil prinsip transisi dari [LandingPageReliaaaa](https://github.com/Reliaaaa/LandingPageReliaaaa), tanpa menyalin aset atau kode repositori tersebut.
+Aplikasi pencatat keuangan pribadi berbahasa Indonesia. Dibangun dengan Next.js, React, TypeScript, PostgreSQL, dan Recharts. Antarmuka mengikuti enam layar ekspor Google Stitch yang disertakan di [`docs/`](docs/). Cara pengguliran dan tipografi dijelaskan di [panduan desain](docs/03-design.md).
 
-[FinTrack Web di Vercel](https://fintrack-web-amber-ten.vercel.app)
+[FinTrack Web di Vercel](https://fintrack-web-amber-ten.vercel.app) · [Masuk atau daftar](https://fintrack-web-amber-ten.vercel.app/login)
 
 ![Dasbor FinTrack Web](docs/dashboard-desktop.png)
 
@@ -13,9 +13,9 @@ Aplikasi pencatat keuangan pribadi berbahasa Indonesia. Dibangun dengan Next.js,
 - CRUD dompet, arsip dompet, anggaran per kategori, jadwal berulang, dan pengaturan tema.
 - Pencarian, filter, dan paginasi transaksi; ekspor CSV dan XLSX; PDF melalui dialog cetak browser.
 - Lampiran foto struk PNG/JPEG/WebP hingga 1 MB pada transaksi.
-- Registrasi/login email, alur Google OAuth, dan pemulihan kata sandi lewat email; sesi memakai cookie HTTP-only, pembatasan percobaan login, dan pemeriksaan Origin pada penulisan API. OAuth/pemulihan memerlukan layanan eksternal dan belum diuji dengan kredensial nyata.
+- Halaman `/login` menyediakan registrasi dan login email ketika PostgreSQL tersambung. Akun baru memiliki dompet Tunai bersaldo nol agar bisa langsung mencatat. Google OAuth dan email pemulihan muncul jika penyedianya dikonfigurasi. Sesi memakai cookie HTTP-only.
 - PostgreSQL untuk akun dan data tersinkron. Vercel Cron dapat membukukan transaksi berulang setiap hari pukul 08.00 WIB ketika `DATABASE_URL` dan `CRON_SECRET` tersedia.
-- Mode demo tanpa database: data contoh dan perubahan tersimpan pada localStorage browser. Jadwal dapat diunduh sebagai `.ics` dan diimpor ke Google Calendar; ekspor bulanan memuat 10 tahun tanggal, ekspor tahunan 40 tahun.
+- Pilih **Gunakan tanpa akun** di `/login` untuk bekerja dengan dompet Tunai kosong. Jika sudah ada catatan lokal, FinTrack membukanya kembali. Catatan lokal disimpan di browser. Jadwal dapat diunduh sebagai `.ics` dan diimpor ke Google Calendar.
 - Manifest PWA dan cache shell untuk kunjungan ulang.
 
 ## Menjalankan lokal
@@ -41,7 +41,7 @@ Untuk PostgreSQL lokal, jalankan `docker compose up -d`, lalu isi `DATABASE_URL=
 
 1. Gunakan proyek Vercel `fintrack-web` yang telah dibuat. Hubungkan repo GitHub pada pengaturan proyek jika menginginkan deploy otomatis dari Git. Workflow `backend-deploy.yml` juga dapat dijalankan manual setelah variabel GitHub disiapkan.
 2. Tambahkan `DATABASE_URL` (PostgreSQL) dan `CRON_SECRET` pada environment **Production** serta **Preview** jika diperlukan. Untuk alur akun lengkap, tambahkan `APP_URL`, `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET`, `RESEND_API_KEY`, dan `RESET_FROM_EMAIL` sesuai petunjuk di bawah.
-3. Jalankan deployment baru. Tanpa `DATABASE_URL`, situs tetap berfungsi sebagai demo lokal browser, tetapi **tidak menyediakan akun atau sinkronisasi perangkat**.
+3. Jalankan deployment baru. Tanpa `DATABASE_URL`, pilih **Gunakan tanpa akun** untuk mencatat dan mengekspor data dari browser. Halaman masuk mengaktifkan login email setelah PostgreSQL tersambung.
 4. Atur backup database dari penyedia PostgreSQL. Endpoint `GET /api/v1/health` menunjukkan status database.
 
 Lihat [`docs/08-devops.md`](docs/08-devops.md) untuk rincian rilis dan rollback.

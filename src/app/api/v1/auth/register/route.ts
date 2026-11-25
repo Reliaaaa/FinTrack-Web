@@ -6,7 +6,7 @@ import { configured, db, ensureSchema } from '@/server/db';
 import { failure, rateLimit, sameOrigin, setSession } from '@/server/auth';
 import { newPasswordSchema } from '@/server/auth-providers';
 import { PayloadTooLarge, readBoundedJson } from '@/server/body';
-import type { FinanceData } from '@/lib/finance';
+import { newFinanceData } from '@/lib/finance';
 export const runtime = 'nodejs';
 const schema = z.object({ name: z.string().trim().min(1).max(60), email: z.email().max(255), password: newPasswordSchema });
 export async function POST(request: NextRequest) {
@@ -23,9 +23,10 @@ export async function POST(request: NextRequest) {
   try {
     await client.query('BEGIN');
     await client.query('INSERT INTO users(id,name,email,password_hash) VALUES($1,$2,$3,$4)', [userId, name, email, await hash(password, 12)]);
-    const empty: FinanceData = { name, wallets: [], entries: [], budgets: [], recurring: [] };
-    await client.query('INSERT INTO finance_data(user_id,data) VALUES($1,$2)', [userId, JSON.stringify(empty)]);
+    await client.query('INSERT INTO finance_data(user_id,data) VALUES($1,$2)', [userId, JSON.stringify(newFinanceData(name))]);
+    const response = NextResponse.json({ ok: true }, { status: 201 });
+    await setSession(response, userId, client);
     await client.query('COMMIT');
+    return response;
   } catch (error) { await client.query('ROLLBACK'); if ((error as { code?: string }).code === '23505') return failure('Email sudah terdaftar', 409); return failure('Tidak dapat membuat akun', 500); } finally { client.release(); }
-  const response = NextResponse.json({ ok: true }, { status: 201 }); await setSession(response, userId); return response;
 }

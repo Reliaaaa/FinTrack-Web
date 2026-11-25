@@ -4,10 +4,11 @@ import { NextRequest, NextResponse } from 'next/server';
 import { db, ensureSchema, configured } from '@/server/db';
 import { appOrigin, googleProfile } from '@/server/auth-providers';
 import { setSession } from '@/server/auth';
+import { newFinanceData } from '@/lib/finance';
 export const runtime = 'nodejs';
 export async function GET(request: NextRequest) {
   const base = appOrigin(process.env.APP_URL);
-  const error = (reason: string) => { const response = new NextResponse(null, { status: 302, headers: { Location: `/?auth_error=${reason}`, 'Cache-Control': 'no-store' } }); response.cookies.set('fintrack_oauth_state', '', { path: '/api/v1/auth/google', maxAge: 0, httpOnly: true, secure: process.env.NODE_ENV === 'production', sameSite: 'lax' }); return response; };
+  const error = (reason: string) => { const response = new NextResponse(null, { status: 302, headers: { Location: `/login?auth_error=${reason}`, 'Cache-Control': 'no-store' } }); response.cookies.set('fintrack_oauth_state', '', { path: '/api/v1/auth/google', maxAge: 0, httpOnly: true, secure: process.env.NODE_ENV === 'production', sameSite: 'lax' }); return response; };
   const state = request.nextUrl.searchParams.get('state') || '';
   const expected = request.cookies.get('fintrack_oauth_state')?.value || '';
   const code = request.nextUrl.searchParams.get('code');
@@ -27,7 +28,7 @@ export async function GET(request: NextRequest) {
         userId = randomUUID(); const name = String(profile.name || email.split('@')[0]).trim().slice(0, 60) || 'Pengguna';
         await client.query('INSERT INTO users(id,name,email,password_hash) VALUES($1,$2,$3,$4)', [userId, name, email, await hash(randomBytes(32).toString('hex'), 12)]);
         await client.query('INSERT INTO google_accounts(subject,user_id) VALUES($1,$2)', [profile.sub, userId]);
-        await client.query('INSERT INTO finance_data(user_id,data) VALUES($1,$2)', [userId, JSON.stringify({ name, wallets: [], entries: [], budgets: [], recurring: [] })]);
+        await client.query('INSERT INTO finance_data(user_id,data) VALUES($1,$2)', [userId, JSON.stringify(newFinanceData(name))]);
       }
       await client.query('COMMIT');
     } catch (e) { await client.query('ROLLBACK'); throw e; } finally { client.release(); }

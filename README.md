@@ -18,21 +18,22 @@
   <a href="https://fintrack-web-amber-ten.vercel.app/?mode=lokal">Gunakan tanpa akun</a>
 </p>
 
-![Dasbor FinTrack dengan ringkasan saldo, grafik arus kas, dan pengeluaran per kategori](docs/dashboard-desktop.png)
+![Dasbor FinTrack dengan kartu Uang Digital dan Uang Tunai, grafik arus kas, dan pengeluaran per kategori](docs/dashboard-desktop.png)
 
 <sub>Pratinjau dasbor menggunakan data contoh.</sub>
 
 <details>
   <summary>Lihat tampilan seluler</summary>
   <br>
-  <img src="docs/dashboard-mobile.png" width="320" alt="Dasbor FinTrack pada ponsel">
+  <img src="docs/dashboard-mobile.png" width="320" alt="Dasbor FinTrack pada ponsel dengan kartu Uang Digital dan Uang Tunai">
 </details>
 
 ## Fitur utama
 
 | Fitur | Yang bisa kamu lakukan |
 | --- | --- |
-| **Ringkasan keuangan** | Pantau saldo, pemasukan, pengeluaran, sisa anggaran, dan grafik arus kas enam bulan. |
+| **Ringkasan keuangan** | Pantau kekayaan bersih, pemasukan, pengeluaran, sisa anggaran, dan grafik arus kas enam bulan. |
+| **Uang digital dan tunai** | Lihat saldo bank, e-wallet, dan kartu kredit di kartu Uang Digital serta saldo dompet tunai di kartu Uang Tunai. Dana simpanan tetap dihitung dalam kekayaan bersih. |
 | **Transaksi dan dompet** | Catat pemasukan, pengeluaran, serta transfer antar-dompet. Cari transaksi dan tambahkan foto struk. |
 | **Investasi dan simpanan** | Sisihkan dana dari rekening, e-wallet, atau dompet tunai ke simpanan terpisah. Catat penarikan kembali ke dompet saat dibutuhkan. |
 | **Anggaran bulanan** | Tetapkan batas belanja per kategori dan lihat berapa banyak yang sudah terpakai. |

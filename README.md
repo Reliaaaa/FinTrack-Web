@@ -191,6 +191,7 @@ npm run build
 | [Panduan desain](docs/03-design.md) | [Basis data](docs/05-database.md) | [Catatan tinjauan](docs/09-review.md) |
 | [Spesifikasi UI/UX](docs/reference/UI-UX-Stitch.md) | [DevOps](docs/08-devops.md) | |
 | [Ekspor Google Stitch](docs/stitch/) | [Prompt pengembangan awal](docs/reference/Codex-master-prompt.md) | |
+| [Panduan UI/UX untuk Codex](docs/10-uiux-codex.md) | | |
 
 ---
 

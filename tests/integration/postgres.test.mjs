@@ -213,7 +213,7 @@ test('PostgreSQL: akun terisolasi, snapshot persisten, konflik versi, reset dan 
         await page.waitForURL(`${base}/`);
         await page.getByText('Akun pribadi').waitFor();
         await page.goto(`${base}/settings`);
-        await page.getByRole('button', { name: 'Keluar' }).click();
+        await page.getByRole('main').getByRole('button', { name: 'Keluar' }).click();
         await page.getByRole('heading', { name: 'Selamat datang kembali' }).waitFor();
         await page.goto(`${base}/login`);
         await page.getByLabel('Alamat email').fill(email);

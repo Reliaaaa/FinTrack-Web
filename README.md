@@ -14,8 +14,8 @@ Aplikasi keuangan pribadi berbahasa Indonesia untuk ponsel dan desktop.
 ![TypeScript](https://img.shields.io/badge/TypeScript-5-3178C6?logo=typescript&logoColor=white)
 ![PostgreSQL](https://img.shields.io/badge/PostgreSQL-16-4169E1?logo=postgresql&logoColor=white)
 
-<a href="https://fintrack-web-amber-ten.vercel.app/?mode=lokal"><img src="https://img.shields.io/badge/🚀_Coba_Tanpa_Akun-235347?style=for-the-badge" alt="Coba tanpa akun"></a>
-<a href="https://fintrack-web-amber-ten.vercel.app/login"><img src="https://img.shields.io/badge/🔐_Masuk_atau_Daftar-163832?style=for-the-badge" alt="Masuk atau daftar"></a>
+<a href="https://fintrack-web671.vercel.app/?mode=lokal"><img src="https://img.shields.io/badge/🚀_Coba_Tanpa_Akun-235347?style=for-the-badge" alt="Coba tanpa akun"></a>
+<a href="https://fintrack-web671.vercel.app/login"><img src="https://img.shields.io/badge/🔐_Masuk_atau_Daftar-163832?style=for-the-badge" alt="Masuk atau daftar"></a>
 
 [Fitur](#-fitur) · [Tampilan](#-tampilan) · [Cara pakai](#-cara-pakai) · [Instalasi](#-jalankan-di-komputer) · [Dokumentasi](#-dokumentasi)
 
@@ -96,7 +96,7 @@ Sisihkan dana dari rekening, e-wallet, atau dompet tunai ke simpanan terpisah. C
 | **Penyimpanan** | Browser | Server (PostgreSQL) |
 | **Akses dari perangkat lain** | Tidak | Ya |
 | **Tagihan berulang** | Jadwal dan file kalender | Pencatatan otomatis dengan cron |
-| **Mulai** | [Buka mode lokal](https://fintrack-web-amber-ten.vercel.app/?mode=lokal) | [Daftar akun](https://fintrack-web-amber-ten.vercel.app/login) |
+| **Mulai** | [Buka mode lokal](https://fintrack-web671.vercel.app/?mode=lokal) | [Daftar akun](https://fintrack-web671.vercel.app/login) |
 
 > [!IMPORTANT]
 > Data mode lokal hilang jika kamu membersihkan data browser. Ekspor CSV sebelum berganti perangkat. CSV berisi transaksi saja.
@@ -168,7 +168,7 @@ Buka [localhost:3000](http://localhost:3000). Aplikasi berjalan dengan penyimpan
 - **Google OAuth:** daftarkan callback `APP_URL/api/v1/auth/google/callback`. Akun kata sandi yang sudah ada tidak otomatis tertaut ke Google.
 - **Pemulihan kata sandi:** gunakan pengirim terverifikasi dan matikan pelacakan klik di Resend. Tautan berlaku 30 menit untuk sekali pakai.
 
-Baca [panduan deployment dan rollback](docs/08-devops.md). Cek [status layanan produksi](https://fintrack-web-amber-ten.vercel.app/api/v1/health).
+Baca [panduan deployment dan rollback](docs/08-devops.md). Cek [status layanan produksi](https://fintrack-web671.vercel.app/api/v1/health).
 
 </details>
 

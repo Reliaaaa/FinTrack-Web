@@ -18,7 +18,7 @@ Dokumen ini memetakan UI FinTrack dan state yang diperlukan untuk menuntaskan fi
                             └── Pengaturan ──> Profil / Tema / Data
 ```
 
-Dock mengambang di tengah bagian bawah. Pada desktop, delapan menu dan tombol **Catat Transaksi** tampil di dock. Hingga lebar 800 px, dock menampilkan Dasbor, Transaksi, Anggaran, Investasi, Dompet, dan **Lainnya**. Menu **Lainnya** memuat Tagihan Berulang, Laporan, Pengaturan, dan panduan. Tombol tambah berada di atas dock pada layar sempit. Header memuat identitas FinTrack, pilihan bulan, pintasan pencarian, dan pengaturan tema.
+Dock mengambang di tengah bagian bawah. Pada desktop, delapan menu dan tombol **Catat Transaksi** tampil di dock. Hingga lebar 800 px, dock menampilkan Dasbor, Transaksi, Anggaran, Investasi, Dompet, dan **Lainnya**. Menu **Lainnya** memuat Tagihan Berulang, Laporan, Pengaturan, dan panduan. Tombol tambah berada di atas dock pada layar sempit. Header tetap terlihat saat digulir. Di dalamnya ada identitas FinTrack, pilihan bulan, pengaturan tema, dan tombol Keluar saat masuk akun. Pencarian tersedia di halaman Transaksi.
 
 ## Tata letak dock
 
@@ -65,12 +65,12 @@ Gunakan [`globals.css`](../src/app/globals.css) sebagai acuan. Tema gelap mengga
 | Tipografi | Label dan keterangan yang dipakai bersama menggunakan 12 px, teks kecil 13 px, dan isi 14 px. Judul halaman mengikuti lebar layar dari 24 sampai 32 px. Judul Dasbor dari 26 sampai 40 px. |
 | Jarak dan bentuk | Langkah jarak yang dipakai adalah 8, 12, 16, 20, dan 24 px. Margin horizontal 16 sampai 34 px, jarak kartu 12 sampai 22 px, radius kartu 16 px, dan radius kontrol 10 px. |
 | Desktop | Empat kartu ringkasan dan dua kartu saldo. Grafik arus kas mendapat kolom lebih lebar dari grafik kategori. Dock berada di bawah konten. |
-| Tablet | Hingga 900 px, pencarian tampil sebagai ikon dan kartu ringkasan menjadi dua kolom. Hingga 800 px, menu tambahan masuk ke Lainnya. |
+| Tablet | Hingga 900 px, kartu ringkasan menjadi dua kolom. Hingga 800 px, menu tambahan masuk ke Lainnya. |
 | Ponsel | Hingga 700 px, grafik dan panel bawah menjadi satu kolom, legenda kategori membungkus nama panjang, dan konten menyisakan ruang untuk dock serta tombol tambah. Kontrol header berukuran 44 px dan ukuran teks input sedikitnya 16 px. Hingga 500 px, kontrol periode mendapat baris sendiri bersama aksi header. |
 | Tabel dan grafik | Tabel bergulir di dalam panel pada layar sempit. Label sumbu memakai `rb` dan `jt` sesuai nominal. Warna grafik disertai legenda, sedangkan nilai lengkap tersedia pada tooltip arus kas. |
 | Fokus dan gerakan | Tampilkan fokus keyboard pada kontrol dan gunakan preferensi reduced motion untuk animasi. |
 
-Tipografi mengikuti SF Pro Display dari [LandingPageReliaaaa](https://github.com/Reliaaaa/LandingPageReliaaaa). FinTrack memilih SF Pro bawaan perangkat Apple dan memakai Inter atau font sistem pada perangkat lain. Berkas font Apple tidak disematkan karena [lisensinya](https://developer.apple.com/fonts/) membatasi penggunaan dan distribusi. Angka memakai `tabular-nums` dan nominal diformat dengan `Intl.NumberFormat('id-ID')`.
+Judul memakai Plus Jakarta Sans. Teks, tabel, dan nominal memakai IBM Plex Sans, dengan font sistem sebagai cadangan. Nominal menggunakan angka tabular dan format `id-ID`.
 
 Pengguliran roda mouse memakai Lenis, dengan scrollbar badan halaman dari OverlayScrollbars. Inisialisasinya diadaptasi dari [smooth-scroll.js](https://github.com/Reliaaaa/Internship-BEM-Website-Project/blob/b6d5abe73e9411591bb7380bd204252dd65906a1/smooth-scroll.js) dan [scrollbar.js](https://github.com/Reliaaaa/Internship-BEM-Website-Project/blob/b6d5abe73e9411591bb7380bd204252dd65906a1/scrollbar.js). Sentuhan dan area gulir di modal tetap memakai kontrol browser. Pengaturan pengurangan gerakan mematikan Lenis dan animasi antarmuka.
 

@@ -34,8 +34,8 @@ test('tata letak FinTrack terbaca di dua tema dan empat ukuran layar', async ({ 
   await theme.click();
   await expect(page.locator('html')).toHaveAttribute('data-theme', 'dark');
   await expect.poll(() => page.evaluate(() => document.documentElement.scrollWidth - innerWidth)).toBeLessThanOrEqual(0);
-  await page.getByRole('button', { name: 'Cari transaksi', exact: true }).click();
-  await expect(page.getByRole('textbox', { name: 'Cari transaksi' })).toBeFocused();
+  await expect(page.getByRole('banner').getByRole('button', { name: 'Cari transaksi', exact: true })).toHaveCount(0);
+  await nav.getByRole('button', { name: 'Transaksi', exact: true }).click();
   await expect(page.getByRole('textbox', { name: 'Cari transaksi' })).toHaveCSS('font-size', '16px');
 });
 
@@ -106,22 +106,18 @@ test('transaksi demo bertahan setelah reload dan bisa dihapus', async ({ page })
   await expect(page.getByText('Transaksi QA')).toHaveCount(0);
 });
 
-test('pintasan Cari transaksi memfokuskan pencarian dan menyaring hasil', async ({ page }) => {
+test('kolom pencarian Transaksi menyaring nama dan nominal', async ({ page }) => {
   await page.goto('/');
-  const shortcut = page.getByRole('button', { name: /Cari transaksi/ });
+  const transactions = page.getByRole('navigation', { name: 'Navigasi utama' }).getByRole('button', { name: 'Transaksi', exact: true });
   const search = page.getByRole('textbox', { name: 'Cari transaksi' });
   const rows = page.getByRole('row');
 
-  await shortcut.click();
+  await transactions.click();
   await expect(page).toHaveURL(/\/transactions$/);
-  await expect(search).toBeFocused();
-  await page.keyboard.type('  LISTRIK  ');
+  await search.fill('  LISTRIK  ');
   await expect(rows.filter({ hasText: 'Listrik & internet' })).toBeVisible();
   await expect(rows.filter({ hasText: 'Belanja makan & kopi' })).toHaveCount(0);
 
-  await shortcut.click();
-  await expect(search).toBeFocused();
-  await expect(search).toHaveValue('  LISTRIK  ');
   await search.fill('1650000');
   await expect(rows.filter({ hasText: 'Listrik & internet' })).toBeVisible();
   await expect(rows.filter({ hasText: 'Belanja makan & kopi' })).toHaveCount(0);
@@ -130,6 +126,45 @@ test('pintasan Cari transaksi memfokuskan pencarian dan menyaring hasil', async 
 
   await page.goBack();
   await expect(page.getByRole('heading', { name: /Selamat datang/ })).toBeVisible();
+});
+
+test('header tetap terlihat saat dasbor digulir di desktop dan ponsel', async ({ page }) => {
+  await page.emulateMedia({ reducedMotion: 'reduce' });
+  for (const width of [1440, 375]) {
+    await page.setViewportSize({ width, height: 540 });
+    await page.goto('/');
+    const header = page.getByRole('banner');
+    await expect(header.getByLabel('Pilih bulan')).toBeVisible();
+    await page.mouse.move(width / 2, 330);
+    await page.mouse.wheel(0, 680);
+    await expect.poll(() => page.evaluate(() => Math.max(window.scrollY, document.scrollingElement?.scrollTop ?? 0, document.querySelector('.os-viewport')?.scrollTop ?? 0))).toBeGreaterThan(100);
+    await expect.poll(async () => Math.abs((await header.boundingBox())?.y ?? Infinity)).toBeLessThan(1);
+    await expect(header.getByRole('button', { name: 'Aktifkan tema gelap' })).toBeInViewport();
+  }
+});
+
+test('Laporan mengunduh CSV dan Excel serta menyiapkan template PDF', async ({ page }) => {
+  await page.goto('/reports');
+  const actions = page.getByRole('main');
+  for (const [label, extension] of [['CSV', 'csv'], ['Excel', 'xlsx']]) {
+    const download = page.waitForEvent('download');
+    await actions.getByRole('button', { name: label, exact: true }).click();
+    expect((await download).suggestedFilename()).toMatch(new RegExp(`^fintrack-transaksi-\\d{4}-\\d{2}\\.${extension}$`));
+  }
+
+  await page.emulateMedia({ media: 'print' });
+  await page.evaluate(() => window.dispatchEvent(new Event('beforeprint')));
+  const report = page.locator('.print-report');
+  await expect(report.getByRole('heading', { name: 'Laporan Keuangan Bulanan' })).toBeVisible();
+  await expect(report.getByRole('table')).toBeVisible();
+  await expect(report.getByText('Pemasukan', { exact: true }).first()).toBeVisible();
+  await expect(page.getByRole('navigation', { name: 'Navigasi utama' })).toBeHidden();
+  await page.evaluate(() => window.dispatchEvent(new Event('afterprint')));
+  await expect(report).toHaveCount(0);
+  await page.emulateMedia({ media: 'screen' });
+  const pdf = await page.pdf({ preferCSSPageSize: true });
+  expect(pdf.subarray(0, 5).toString()).toBe('%PDF-');
+  expect(pdf.length).toBeGreaterThan(3000);
 });
 
 test('anggaran tidak bercampur antarbulan', async ({ page }) => {

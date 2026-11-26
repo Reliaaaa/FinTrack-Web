@@ -9,6 +9,15 @@ export function compact(amount: number): string {
   return rupiah(amount);
 }
 
+const axisNumber = new Intl.NumberFormat('id-ID', { maximumFractionDigits: 3 });
+
+export function rupiahAxisTick(amount: number): string {
+  const magnitude = Math.abs(amount);
+  if (magnitude >= 1_000_000) return `${axisNumber.format(amount / 1_000_000)} jt`;
+  if (magnitude >= 1_000) return `${axisNumber.format(amount / 1_000)} rb`;
+  return axisNumber.format(amount);
+}
+
 export function dateLabel(value: string): string {
   return new Intl.DateTimeFormat('id-ID', { day: 'numeric', month: 'short', year: 'numeric' }).format(new Date(`${value.slice(0, 10)}T12:00:00`));
 }

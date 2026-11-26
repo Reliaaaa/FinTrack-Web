@@ -107,6 +107,6 @@ test('simpanan dapat diisi dari bank dan ditarik ke e-wallet tanpa menghitungnya
   await expect(page.getByRole('row').filter({ hasText: 'Penarikan simpanan' })).toBeVisible();
   await page.getByRole('button', { name: 'Hapus Setoran simpanan' }).click();
   await expect(page.getByRole('status')).toContainText('Saldo tujuan tidak cukup');
-  await bottom.getByRole('button', { name: 'Dasbor' }).click();
+  await page.goto('/');
   await expect(wealth.locator('.kpi-value')).toHaveText(originalWealth);
 });

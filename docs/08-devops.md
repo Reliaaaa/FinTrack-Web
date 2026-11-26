@@ -2,10 +2,10 @@
 
 ## Status koneksi
 
-Repositori [Reliaaaa/FinTrack-Web](https://github.com/Reliaaaa/FinTrack-Web) dirilis melalui proyek [fintrack-web di Vercel](https://vercel.com/varelliolouis-3927s-projects/fintrack-web). Tim memakai deployment langsung dari commit GitHub. Production sudah menerima konfigurasi PostgreSQL dari Neon. Cek fungsi runtime pada [API kesehatan](https://fintrack-web-amber-ten.vercel.app/api/v1/health). Hasil rilis tercatat di PR GitHub.
+Repositori [Reliaaaa/FinTrack-Web](https://github.com/Reliaaaa/FinTrack-Web) dirilis melalui proyek [fintrack-web di Vercel](https://vercel.com/varelliolouis-3927s-projects/fintrack-web). Tim memakai deployment langsung dari commit GitHub. Production sudah menerima konfigurasi PostgreSQL dari Neon. Cek fungsi runtime pada [API kesehatan](https://fintrack-web671.vercel.app/api/v1/health). Hasil rilis tercatat di PR GitHub.
 
 1. Setelah commit rilis siap di GitHub, hubungkan **proyek Vercel yang sudah ada** melalui Project Settings → Git → Connect Git Repository, pilih `Reliaaaa/FinTrack-Web`, dan tetapkan production branch `main`. Alternatif CLI resmi setelah login ke tim: `vercel link --scope varelliolouis-3927s-projects` lalu `vercel git connect` dari repo dengan remote `origin`. Periksa kembali bahwa project ID tetap `prj_nL4Q6IIQSa6lAK22xKI4gf0SuozZ`. Tool konektor `create_git_project` hanya dapat membuat atau menggunakan proyek yang **sudah** tertaut; tool itu tidak menghubungkan proyek existing yang belum tertaut.
-2. Proyek memakai Vercel Authentication dengan Standard Protection. URL preview dan URL unik deployment memerlukan login Vercel atau tautan berbagi sementara. Domain produksi proyek adalah [fintrack-web-amber-ten.vercel.app](https://fintrack-web-amber-ten.vercel.app). Verifikasi domain dari browser tanpa login setelah deployment produksi Ready.
+2. Proyek memakai Vercel Authentication dengan Standard Protection. URL preview dan URL unik deployment memerlukan login Vercel atau tautan berbagi sementara. Domain produksi proyek adalah [fintrack-web671.vercel.app](https://fintrack-web671.vercel.app). Verifikasi domain dari browser tanpa login setelah deployment produksi Ready.
 3. Bila Git terhubung, Vercel dapat membuat deployment dari push. Tetap gunakan PR/gate di bawah sebelum merge ke `main`. Jika memilih deployment manual, pastikan SHA yang dideploy dan URL hasilnya tercatat. Workflow `backend-deploy.yml` tersedia untuk deploy manual setelah kredensial Vercel di GitHub diatur.
 
 ## Branch dan gate rilis

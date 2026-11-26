@@ -72,5 +72,5 @@ test('login dan daftar akun ditawarkan saat layanan akun tersedia', async ({ pag
   await expect(password).toHaveValue('ValidPass123!');
   await page.getByRole('button', { name: 'Buat Akun' }).click();
   await expect(page).toHaveURL('/');
-  await expect(page.getByText('Akun pribadi')).toBeVisible();
+  await expect(page.getByRole('button', { name: 'Keluar', exact: true })).toBeVisible();
 });

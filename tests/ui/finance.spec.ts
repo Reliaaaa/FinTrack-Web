@@ -9,6 +9,32 @@ test('dasbor menampilkan uang digital dan tunai di layar kecil', async ({ page }
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
 });
 
+test('sumbu arus kas memakai ribuan pada dasbor dan laporan', async ({ page }) => {
+  await page.setViewportSize({ width: 375, height: 844 });
+  await page.addInitScript(() => {
+    const now = new Date();
+    const date = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-01`;
+    localStorage.setItem('fintrack-demo-v1', JSON.stringify({
+      name: 'Pengguna',
+      wallets: [{ id: 'cash', name: 'Tunai', type: 'cash', openingBalance: 50_000, color: '#235347' }],
+      entries: [{ id: 'expense', type: 'expense', amount: 17_000, walletId: 'cash', category: 'Belanja', title: 'Belanja', date }],
+      budgets: [],
+      recurring: [],
+    }));
+  });
+
+  await page.goto('/?mode=lokal');
+  await expect(page.locator('.donut-center')).toContainText(/Rp\s*17 rb/);
+  const dashboardAxis = page.locator('.chart-area .recharts-yAxis');
+  await expect(dashboardAxis).toContainText(/\brb\b/);
+  await expect(dashboardAxis).not.toContainText(/\bjt\b/);
+
+  await page.goto('/reports?mode=lokal');
+  const reportAxis = page.locator('.report-area .recharts-yAxis');
+  await expect(reportAxis).toContainText(/\brb\b/);
+  await expect(reportAxis).not.toContainText(/\bjt\b/);
+});
+
 test('transaksi demo bertahan setelah reload dan bisa dihapus', async ({ page }) => {
   await page.goto('/transactions');
   await page.getByRole('main').getByRole('button', { name: 'Catat Transaksi', exact: true }).click();

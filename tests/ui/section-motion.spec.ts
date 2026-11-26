@@ -24,7 +24,7 @@ test('navigasi ponsel dan indikator anggaran langsung tampil pada reduced motion
   await page.setViewportSize({ width: 375, height: 844 });
   await page.emulateMedia({ reducedMotion: 'reduce' });
   await page.goto('/');
-  await page.getByRole('navigation', { name: 'Navigasi bawah' }).getByRole('button', { name: 'Anggaran' }).click();
+  await page.getByRole('navigation', { name: 'Navigasi utama' }).getByRole('button', { name: 'Anggaran' }).click();
   const view = page.getByRole('main').locator('.section-view');
   await expect(view.getByRole('heading', { name: 'Anggaran Bulanan' })).toBeVisible();
   await expect(view).toHaveCSS('animation-name', 'none');

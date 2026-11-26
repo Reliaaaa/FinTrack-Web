@@ -3,6 +3,7 @@ import ScrollEnhancements from '@/components/ScrollEnhancements';
 import 'lenis/dist/lenis.css';
 import 'overlayscrollbars/overlayscrollbars.css';
 import './globals.css';
+import './floating-dock.css';
 
 export const metadata: Metadata = {
   title: 'FinTrack — Keuangan lebih jelas',

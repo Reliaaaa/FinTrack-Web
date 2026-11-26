@@ -25,9 +25,9 @@ test('tata letak FinTrack terbaca di dua tema dan empat ukuran layar', async ({ 
 
   const period = page.getByLabel('Pilih bulan');
   await expect(period).toHaveCSS('font-size', '16px');
-  const nav = page.getByRole('navigation', { name: 'Navigasi bawah' });
-  const buttons = nav.locator('.bottom-slot > button:last-child');
-  await expect(buttons).toHaveCount(5);
+  const nav = page.getByRole('navigation', { name: 'Navigasi utama' });
+  const buttons = nav.locator('.dock-item[data-compact], .dock-more > summary');
+  await expect(buttons).toHaveCount(6);
   const positions = await buttons.evaluateAll(items => items.map(button => button.getBoundingClientRect().top));
   expect(new Set(positions).size).toBe(1);
 
@@ -37,6 +37,33 @@ test('tata letak FinTrack terbaca di dua tema dan empat ukuran layar', async ({ 
   await page.getByRole('button', { name: 'Cari transaksi', exact: true }).click();
   await expect(page.getByRole('textbox', { name: 'Cari transaksi' })).toBeFocused();
   await expect(page.getByRole('textbox', { name: 'Cari transaksi' })).toHaveCSS('font-size', '16px');
+});
+
+test('dock ponsel tetap mengambang dan menu Lainnya membuka halaman tambahan', async ({ page }) => {
+  await page.setViewportSize({ width: 375, height: 844 });
+  await page.goto('/');
+  const dock = page.getByRole('navigation', { name: 'Navigasi utama' });
+  const more = dock.locator('summary');
+  const reports = dock.getByRole('button', { name: 'Laporan & Analitik' });
+  await expect(dock).toHaveCSS('position', 'fixed');
+  await expect(dock).not.toHaveCSS('backdrop-filter', 'none');
+  await expect(reports).toHaveCount(0);
+
+  await more.click();
+  await expect(reports).toBeVisible();
+  await reports.focus();
+  await page.keyboard.press('Escape');
+  await expect(more).toBeFocused();
+  await expect(reports).toHaveCount(0);
+
+  await more.click();
+  await reports.click();
+  await expect(page).toHaveURL(/\/reports$/);
+  await expect(more).toHaveAttribute('data-current', 'true');
+  await expect(reports).toHaveCount(0);
+
+  await page.emulateMedia({ media: 'print' });
+  await expect(dock).toBeHidden();
 });
 
 test('sumbu arus kas memakai ribuan pada dasbor dan laporan', async ({ page }) => {
@@ -129,7 +156,7 @@ test('halaman mobile tidak melebar dan modal mengembalikan fokus', async ({ page
     expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
   }
   await page.goto('/transactions');
-  const opener = page.locator('.mobile-add');
+  const opener = page.locator('.dock-create');
   await opener.click();
   await expect(page.getByRole('dialog')).toBeVisible();
   await page.keyboard.press('Escape');
@@ -160,7 +187,7 @@ test('konflik menyimpan draf hanya selama tab terbuka', async ({ page }) => {
 test('simpanan dapat diisi dari bank dan ditarik ke e-wallet tanpa menghitungnya sebagai pengeluaran', async ({ page }) => {
   await page.setViewportSize({ width: 375, height: 844 });
   await page.goto('/');
-  const bottom = page.getByRole('navigation', { name: 'Navigasi bawah' });
+  const bottom = page.getByRole('navigation', { name: 'Navigasi utama' });
   const wealth = page.locator('.kpi-card').filter({ hasText: 'Kekayaan bersih' });
   const originalWealth = await wealth.locator('.kpi-value').innerText();
   await bottom.getByRole('button', { name: 'Investasi' }).click();

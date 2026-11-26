@@ -18,25 +18,14 @@ Dokumen ini memetakan UI FinTrack dan state yang diperlukan untuk menuntaskan fi
                             └── Pengaturan ──> Profil / Tema / Data
 ```
 
-Sidebar desktop menyediakan delapan menu dan tombol **Catat Transaksi**. Header memuat pilihan bulan, pintasan pencarian Transaksi, dan pengaturan tema. Pada ponsel, navigasi bawah menyediakan Dasbor, Transaksi, Anggaran, Investasi, dan Dompet. Buka Tagihan Berulang, Laporan, atau Pengaturan melalui tombol menu di header.
+Dock mengambang di tengah bagian bawah. Pada desktop, delapan menu dan tombol **Catat Transaksi** tampil di dock. Hingga lebar 800 px, dock menampilkan Dasbor, Transaksi, Anggaran, Investasi, Dompet, dan **Lainnya**. Menu **Lainnya** memuat Tagihan Berulang, Laporan, Pengaturan, dan panduan. Tombol tambah berada di atas dock pada layar sempit. Header memuat identitas FinTrack, pilihan bulan, pintasan pencarian, dan pengaturan tema.
 
-## Wireframe teks
+## Tata letak dock
 
-```text
-DESKTOP                                      MOBILE
-┌─────────────┬──────────────────────────┐  ┌───────────────────┐
-│ FinTrack    │ Header: periode / tema   │  │ Menu / Judul / Bulan│
-│ + Catat     ├──────────────────────────┤  ├───────────────────┤
-│ Dasbor      │ Judul + aksi             │  │ Judul + aksi       │
-│ Transaksi   │ KPI  KPI  KPI  KPI       │  │ KPI       KPI      │
-│ Dompet      │ Arus kas   │ Donat       │  │ KPI       KPI      │
-│ Anggaran    │ Anggaran   │ Transaksi   │  │ Arus kas           │
-│ Jadwal      │            │ terbaru     │  │ Donat / Anggaran   │
-│ Laporan     │            │             │  │ Transaksi terbaru  │
-│ Pengaturan  │            │             │  ├───────────────────┤
-└─────────────┴──────────────────────────┘  │ Dasbor Trans + ...│
-                                           └───────────────────┘
-```
+| Layar | Konten | Navigasi |
+| --- | --- | --- |
+| Desktop | Header dan konten terpusat memanfaatkan lebar layar. | Dock kaca tetap di bagian bawah dengan semua menu dan aksi catat. |
+| Tablet dan ponsel hingga 800 px | Header menampilkan pencarian sebagai ikon. | Lima menu utama tetap terlihat. Menu Lainnya terbuka ke atas, dan tombol tambah mengambang di atas dock. |
 
 ## State layar P0
 
@@ -49,7 +38,7 @@ DESKTOP                                      MOBILE
 | Dompet | Total saldo, kartu per dompet, tambah/ubah/arsip/hapus | Bersama bootstrap; indikator “Menyimpan…” saat penulisan akun | Kartu “Tambah Dompet Baru” | Hapus dompet yang masih dipakai ditolak lewat toast | Toast; saldo dan ringkasan berubah |
 | Transaksi | Pencarian, filter dompet/tipe/kategori/rentang tanggal, tabel, paginasi, form pemasukan/pengeluaran/transfer | Bersama bootstrap; tombol simpan nonaktif dan bertuliskan “Menyimpan…” saat penulisan akun | Pesan dan tombol Catat Transaksi | Nominal nol, dompet transfer sama, dan kegagalan simpan ditampilkan; konfirmasi hapus native | Toast; tabel, saldo, dan grafik diperbarui |
 | Anggaran | Ringkasan pagu/terpakai/sisa untuk bulan pilihan, kartu progres per kategori | Bersama bootstrap; indikator “Menyimpan…” saat penulisan akun | Ajakan membuat anggaran pada bulan yang dipilih | Pagu nol atau kategori ganda **pada bulan yang sama** ditolak dekat form; simpan server gagal ditampilkan lewat toast | Pagu menyimpan periode `YYYY-MM`; badge “Terkendali”, “Mendekati batas”, “Melebihi batas” serta toast |
-| Navigasi responsif | Sidebar, header, bottom nav, modal | Tidak relevan | Tidak relevan | Halaman URL tak dikenal memberi 404 | Tab aktif, URL, dan browser Back selaras |
+| Navigasi responsif | Header, dock mengambang, dan modal | Tidak relevan | Tidak relevan | Halaman URL tak dikenal memberi 404 | Tab aktif, URL, dan browser Back selaras |
 | Konflik perubahan akun | Banner konflik menyediakan unduh draf lokal dan muat data server terbaru | Tombol simpan diblokir selama konflik | Tidak muncul tanpa konflik | Pesan `role="alert"` menerangkan bahwa draf lokal tersimpan | Draf diunduh sebelum data terbaru dimuat |
 
 Alur UI Google OAuth, lupa kata sandi, dan reset sudah tersedia, tetapi perlu pengujian dengan Google, Resend, dan PostgreSQL nyata sebelum dinyatakan selesai. Paginasi transaksi masih di browser. Form menampilkan status penulisan akun, mengembalikan kesalahan simpan melalui toast, dan melakukan rollback bila jaringan/server gagal. Filter tanggal dan kategori serta pagu khusus tiap bulan sudah tersedia.
@@ -75,15 +64,17 @@ Gunakan [`globals.css`](../src/app/globals.css) sebagai acuan. Tema gelap mengga
 | --- | --- |
 | Tipografi | Label dan keterangan yang dipakai bersama menggunakan 12 px, teks kecil 13 px, dan isi 14 px. Judul halaman mengikuti lebar layar dari 24 sampai 32 px. Judul Dasbor dari 26 sampai 40 px. |
 | Jarak dan bentuk | Langkah jarak yang dipakai adalah 8, 12, 16, 20, dan 24 px. Margin horizontal 16 sampai 34 px, jarak kartu 12 sampai 22 px, radius kartu 16 px, dan radius kontrol 10 px. |
-| Desktop | Empat kartu ringkasan dan dua kartu saldo. Grafik arus kas mendapat kolom lebih lebar dari grafik kategori. Sidebar tetap terbuka di atas 900 px. |
-| Tablet | Hingga 900 px, sidebar dibuka lewat tombol menu, pencarian tampil sebagai ikon, dan kartu ringkasan menjadi dua kolom. |
-| Ponsel | Hingga 700 px, grafik dan panel bawah menjadi satu kolom, legenda kategori membungkus nama panjang, dan navigasi bawah menyisakan ruang untuk tombol tambah terpisah. Kontrol header berukuran 44 px dan ukuran teks input sedikitnya 16 px. Hingga 500 px, kontrol periode mendapat baris sendiri bersama aksi header. |
+| Desktop | Empat kartu ringkasan dan dua kartu saldo. Grafik arus kas mendapat kolom lebih lebar dari grafik kategori. Dock berada di bawah konten. |
+| Tablet | Hingga 900 px, pencarian tampil sebagai ikon dan kartu ringkasan menjadi dua kolom. Hingga 800 px, menu tambahan masuk ke Lainnya. |
+| Ponsel | Hingga 700 px, grafik dan panel bawah menjadi satu kolom, legenda kategori membungkus nama panjang, dan konten menyisakan ruang untuk dock serta tombol tambah. Kontrol header berukuran 44 px dan ukuran teks input sedikitnya 16 px. Hingga 500 px, kontrol periode mendapat baris sendiri bersama aksi header. |
 | Tabel dan grafik | Tabel bergulir di dalam panel pada layar sempit. Label sumbu memakai `rb` dan `jt` sesuai nominal. Warna grafik disertai legenda, sedangkan nilai lengkap tersedia pada tooltip arus kas. |
 | Fokus dan gerakan | Tampilkan fokus keyboard pada kontrol dan gunakan preferensi reduced motion untuk animasi. |
 
 Tipografi mengikuti SF Pro Display dari [LandingPageReliaaaa](https://github.com/Reliaaaa/LandingPageReliaaaa). FinTrack memilih SF Pro bawaan perangkat Apple dan memakai Inter atau font sistem pada perangkat lain. Berkas font Apple tidak disematkan karena [lisensinya](https://developer.apple.com/fonts/) membatasi penggunaan dan distribusi. Angka memakai `tabular-nums` dan nominal diformat dengan `Intl.NumberFormat('id-ID')`.
 
 Pengguliran roda mouse memakai Lenis, dengan scrollbar badan halaman dari OverlayScrollbars. Inisialisasinya diadaptasi dari [smooth-scroll.js](https://github.com/Reliaaaa/Internship-BEM-Website-Project/blob/b6d5abe73e9411591bb7380bd204252dd65906a1/smooth-scroll.js) dan [scrollbar.js](https://github.com/Reliaaaa/Internship-BEM-Website-Project/blob/b6d5abe73e9411591bb7380bd204252dd65906a1/scrollbar.js). Sentuhan dan area gulir di modal tetap memakai kontrol browser. Pengaturan pengurangan gerakan mematikan Lenis dan animasi antarmuka.
+
+Gaya dock ada di [floating-dock.css](../src/app/floating-dock.css). Permukaan semi-transparan, blur latar, dan sorotan tepi mengikuti tema. Jika blur tidak tersedia, dock memakai warna permukaan solid. Jarak bawah mengikuti area aman ponsel dan dock disembunyikan saat mencetak laporan.
 
 ## Aksesibilitas dan kontrol kualitas
 

@@ -12,7 +12,7 @@ test('login publik menjelaskan mode lokal dan menjaga transaksi saat kembali', a
   await expect(page).toHaveURL(/\/\?mode=lokal$/);
   await expect(page.getByText('Mode lokal.', { exact: true })).toBeVisible();
   expect(await page.evaluate(() => localStorage.getItem('fintrack-demo-v1'))).toBeNull();
-  await page.locator('.mobile-add').click();
+  await page.locator('.dock-create').click();
   await page.getByPlaceholder('Contoh: Belanja makan siang').fill('Catatan lokal QA');
   await page.getByLabel('Nominal rupiah').fill('17000');
   await page.getByRole('button', { name: 'Simpan Transaksi' }).click();

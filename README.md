@@ -19,12 +19,6 @@ Aplikasi keuangan pribadi berbahasa Indonesia untuk ponsel dan desktop.
 
 [Fitur](#-fitur) · [Tampilan](#-tampilan) · [Cara pakai](#-cara-pakai) · [Instalasi](#-jalankan-di-komputer) · [Dokumentasi](#-dokumentasi)
 
-<br>
-
-<img src="docs/dashboard-desktop.png" alt="Dasbor FinTrack dengan kartu Uang Digital dan Uang Tunai, grafik arus kas, dan pengeluaran per kategori">
-
-<sub>Dasbor dengan data contoh</sub>
-
 </div>
 
 ## ✨ Fitur
@@ -82,11 +76,14 @@ Sisihkan dana dari rekening, e-wallet, atau dompet tunai ke simpanan terpisah. C
 
 ## 📱 Tampilan
 
-<div align="center">
-  <img src="docs/dashboard-mobile.png" width="320" alt="Dasbor FinTrack di ponsel dengan kartu Uang Digital dan Uang Tunai">
-  <br>
-  <sub>Tampilan seluler</sub>
-</div>
+Dasbor terbaru memakai lebar layar penuh. Navigasi berada di dock kaca transparan yang mengambang di bawah. Dock mengikuti tema terang dan gelap serta menandai halaman aktif.
+
+| Layar | Akses dari dock |
+| --- | --- |
+| Desktop | Delapan menu dan tombol **Tambah** untuk mencatat transaksi. |
+| Ponsel dan tablet hingga 800 px | Dasbor, Transaksi, Anggaran, Investasi, dan Dompet. Buka **Lainnya** untuk Tagihan Berulang, Laporan, Pengaturan, dan panduan. Tombol tambah mengambang di atas dock. |
+
+[Buka dasbor terbaru tanpa akun](https://fintrack-web671.vercel.app/?mode=lokal)
 
 ## 🧭 Cara pakai
 

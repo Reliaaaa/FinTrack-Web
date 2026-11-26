@@ -62,7 +62,7 @@ Buat jadwal mingguan, bulanan, atau tahunan. Unduh file `.ics` untuk kalender ka
 <td width="50%" valign="top">
 
 ### 📈 Laporan
-Bandingkan pengeluaran dengan bulan lalu. Lihat 5 pengeluaran terbesar. Ekspor CSV dan Excel, atau simpan PDF lewat dialog cetak.
+Bandingkan pengeluaran dengan bulan lalu. Lihat 5 pengeluaran terbesar. Unduh CSV berkolom rapi atau Excel dengan lembar Ringkasan dan Transaksi. Simpan laporan PDF A4 lewat dialog cetak.
 
 </td>
 </tr>

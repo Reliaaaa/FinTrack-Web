@@ -4,6 +4,7 @@ import 'lenis/dist/lenis.css';
 import 'overlayscrollbars/overlayscrollbars.css';
 import './globals.css';
 import './floating-dock.css';
+import './print-report.css';
 
 export const metadata: Metadata = {
   title: 'FinTrack — Keuangan lebih jelas',

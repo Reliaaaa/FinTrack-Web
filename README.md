@@ -34,6 +34,7 @@
 | --- | --- |
 | **Ringkasan keuangan** | Pantau saldo, pemasukan, pengeluaran, sisa anggaran, dan grafik arus kas enam bulan. |
 | **Transaksi dan dompet** | Catat pemasukan, pengeluaran, serta transfer antar-dompet. Cari transaksi dan tambahkan foto struk. |
+| **Investasi dan simpanan** | Sisihkan dana dari rekening, e-wallet, atau dompet tunai ke simpanan terpisah. Catat penarikan kembali ke dompet saat dibutuhkan. |
 | **Anggaran bulanan** | Tetapkan batas belanja per kategori dan lihat berapa banyak yang sudah terpakai. |
 | **Tagihan berulang** | Jadwalkan pemasukan atau tagihan rutin. Unduh kalender `.ics` untuk diimpor ke Google Calendar. |
 | **Laporan** | Saring transaksi, unduh CSV atau Excel, dan simpan PDF lewat dialog cetak. |

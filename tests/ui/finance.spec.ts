@@ -128,6 +128,50 @@ test('kolom pencarian Transaksi menyaring nama dan nominal', async ({ page }) =>
   await expect(page.getByRole('heading', { name: /Selamat datang/ })).toBeVisible();
 });
 
+test('header ponsel menempatkan kalender, tema, dan Keluar setelah merek', async ({ page }) => {
+  await page.setViewportSize({ width: 375, height: 844 });
+  const user = { id: 'qa-user', name: 'Tester' };
+  const data = { name: user.name, wallets: [], entries: [], budgets: [], recurring: [] };
+  await page.route('**/api/v1/bootstrap', route => route.fulfill({ json: { configured: true, user, version: '1', data } }));
+  await page.route('**/api/v1/auth/me', route => route.fulfill({ json: { user } }));
+  await page.goto('/');
+
+  const header = page.getByRole('banner');
+  const brand = header.getByRole('button', { name: 'FinTrack, buka dasbor' });
+  const calendar = header.locator('.period-select');
+  const month = header.getByLabel('Pilih bulan');
+  const theme = header.getByRole('button', { name: 'Aktifkan tema gelap' });
+  const logout = header.getByRole('button', { name: 'Keluar' });
+  const centers = [];
+  for (const control of [brand, calendar, theme, logout]) {
+    await expect(control).toBeVisible();
+    const box = (await control.boundingBox())!;
+    expect(box.width).toBeGreaterThanOrEqual(44);
+    expect(box.height).toBeGreaterThanOrEqual(44);
+    centers.push({ x: box.x + box.width / 2, y: box.y + box.height / 2 });
+  }
+  expect(centers.map(center => center.x)).toEqual(centers.map(center => center.x).sort((a, b) => a - b));
+  expect(new Set(centers.map(center => center.y)).size).toBe(1);
+  await expect(header.locator('.topbar-title')).toBeHidden();
+  await expect(header.getByRole('link', { name: 'Lihat panduan' })).toBeHidden();
+  await expect(month).toHaveCSS('opacity', '0');
+  expect(await month.evaluate(input => {
+    const box = input.getBoundingClientRect();
+    return document.elementFromPoint(box.x + box.width / 2, box.y + box.height / 2) === input;
+  })).toBe(true);
+  await month.fill('2025-02');
+  await expect(page.getByText('Ringkasan · Februari 2025')).toBeVisible();
+
+  const more = page.getByRole('navigation', { name: 'Navigasi utama' }).locator('summary');
+  for (const control of [brand.locator('svg'), month, theme, logout, more]) {
+    await expect(control).toHaveCSS('-webkit-tap-highlight-color', 'rgba(0, 0, 0, 0)');
+  }
+
+  await page.setViewportSize({ width: 1440, height: 844 });
+  await expect(month).toHaveCSS('opacity', '1');
+  await expect(header.getByRole('link', { name: 'Lihat panduan' })).toBeVisible();
+});
+
 test('header tetap terlihat saat dasbor digulir di desktop dan ponsel', async ({ page }) => {
   await page.emulateMedia({ reducedMotion: 'reduce' });
   for (const width of [1440, 375]) {

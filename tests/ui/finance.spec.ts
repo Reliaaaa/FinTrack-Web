@@ -23,6 +23,32 @@ test('transaksi demo bertahan setelah reload dan bisa dihapus', async ({ page })
   await expect(page.getByText('Transaksi QA')).toHaveCount(0);
 });
 
+test('pintasan Cari transaksi memfokuskan pencarian dan menyaring hasil', async ({ page }) => {
+  await page.goto('/');
+  const shortcut = page.getByRole('button', { name: /Cari transaksi/ });
+  const search = page.getByRole('textbox', { name: 'Cari transaksi' });
+  const rows = page.getByRole('row');
+
+  await shortcut.click();
+  await expect(page).toHaveURL(/\/transactions$/);
+  await expect(search).toBeFocused();
+  await page.keyboard.type('  LISTRIK  ');
+  await expect(rows.filter({ hasText: 'Listrik & internet' })).toBeVisible();
+  await expect(rows.filter({ hasText: 'Belanja makan & kopi' })).toHaveCount(0);
+
+  await shortcut.click();
+  await expect(search).toBeFocused();
+  await expect(search).toHaveValue('  LISTRIK  ');
+  await search.fill('1650000');
+  await expect(rows.filter({ hasText: 'Listrik & internet' })).toBeVisible();
+  await expect(rows.filter({ hasText: 'Belanja makan & kopi' })).toHaveCount(0);
+  await search.fill('tidak-cocok-dengan-transaksi');
+  await expect(page.getByRole('heading', { name: 'Tidak ada transaksi' })).toBeVisible();
+
+  await page.goBack();
+  await expect(page.getByRole('heading', { name: /Selamat datang/ })).toBeVisible();
+});
+
 test('anggaran tidak bercampur antarbulan', async ({ page }) => {
   await page.goto('/budgets');
   const selectedMonth = await page.getByLabel('Pilih bulan').inputValue();

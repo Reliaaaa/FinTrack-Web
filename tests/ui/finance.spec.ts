@@ -25,14 +25,14 @@ test('sumbu arus kas memakai ribuan pada dasbor dan laporan', async ({ page }) =
 
   await page.goto('/?mode=lokal');
   await expect(page.locator('.donut-center')).toContainText(/Rp\s*17 rb/);
-  const dashboardAxis = page.locator('.chart-area .recharts-yAxis');
-  await expect(dashboardAxis).toContainText(/\brb\b/);
-  await expect(dashboardAxis).not.toContainText(/\bjt\b/);
+  const dashboardAxis = page.locator('.chart-area .recharts-yAxis-tick-labels');
+  await expect(dashboardAxis.getByText(/\brb$/).first()).toBeVisible();
+  await expect(dashboardAxis.getByText(/\bjt$/)).toHaveCount(0);
 
   await page.goto('/reports?mode=lokal');
-  const reportAxis = page.locator('.report-area .recharts-yAxis');
-  await expect(reportAxis).toContainText(/\brb\b/);
-  await expect(reportAxis).not.toContainText(/\bjt\b/);
+  const reportAxis = page.locator('.report-area .recharts-yAxis-tick-labels');
+  await expect(reportAxis.getByText(/\brb$/).first()).toBeVisible();
+  await expect(reportAxis.getByText(/\bjt$/)).toHaveCount(0);
 });
 
 test('transaksi demo bertahan setelah reload dan bisa dihapus', async ({ page }) => {

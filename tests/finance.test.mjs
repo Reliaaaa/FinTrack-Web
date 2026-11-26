@@ -62,3 +62,23 @@ test('calendar export keeps the original day after a short month', () => {
   const text = icsText({ id: 'r', title: 'Tagihan', type: 'expense', amount: 1000, walletId: 'w', category: 'Lainnya', frequency: 'monthly', nextDate: '2026-01-31', anchorDay: 31, active: true });
   assert.match(text, /RDATE;VALUE=DATE:20260228,20260331/);
 });
+
+test('investment transfers conserve net worth and reject unbacked savings withdrawals', () => {
+  const date = new Date(2026, 10, 15);
+  const data = seedData(date);
+  const before = metrics(data, date);
+  const account = { id: 'investment', name: 'Dana darurat', type: 'investment', openingBalance: 0, color: '#235347' };
+  const deposit = { id: 'setor', type: 'transfer', walletId: 'bca', targetWalletId: account.id, category: 'Investasi', title: 'Setoran', amount: 500000, date: '2026-11-15' };
+  const withdrawal = { ...deposit, id: 'tarik', title: 'Penarikan', walletId: account.id, targetWalletId: 'gopay', amount: 150000 };
+  const next = { ...data, wallets: [...data.wallets, account], entries: [withdrawal, deposit, ...data.entries] };
+  assert.equal(financeSchema.safeParse(next).success, true);
+  assert.equal(walletBalance(next, account.id), 350000);
+  assert.equal(walletBalance(next, 'bca'), walletBalance(data, 'bca') - 500000);
+  assert.equal(walletBalance(next, 'gopay'), walletBalance(data, 'gopay') + 150000);
+  for (const key of ['balance', 'income', 'expense', 'spending']) {
+    assert.equal(metrics(next, date)[key], before[key]);
+  }
+  assert.equal(financeSchema.safeParse({ ...next, entries: [withdrawal, ...data.entries] }).success, false);
+  assert.equal(financeSchema.safeParse({ ...next, entries: [{ ...withdrawal, type: 'expense' }, deposit, ...data.entries] }).success, false);
+  assert.equal(financeSchema.safeParse({ ...next, wallets: [...data.wallets, { ...account, openingBalance: 1 }] }).success, false);
+});

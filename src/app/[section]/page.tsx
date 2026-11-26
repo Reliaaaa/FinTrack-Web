@@ -1,7 +1,7 @@
 import { notFound } from 'next/navigation';
 import FinanceApp from '@/components/FinanceApp';
 
-const sections = ['transactions', 'wallets', 'budgets', 'recurring', 'reports', 'settings'];
+const sections = ['transactions', 'wallets', 'investments', 'budgets', 'recurring', 'reports', 'settings'];
 
 export function generateStaticParams() { return sections.map(section => ({ section })); }
 

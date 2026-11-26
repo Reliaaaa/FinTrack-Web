@@ -65,3 +65,48 @@ test('konflik menyimpan draf hanya selama tab terbuka', async ({ page }) => {
   expect(await freshTab.evaluate(() => Boolean(sessionStorage.getItem('fintrack-pending-change:qa-user')))).toBe(false);
   await freshTab.close();
 });
+
+test('simpanan dapat diisi dari bank dan ditarik ke e-wallet tanpa menghitungnya sebagai pengeluaran', async ({ page }) => {
+  await page.setViewportSize({ width: 375, height: 844 });
+  await page.goto('/');
+  const bottom = page.getByRole('navigation', { name: 'Navigasi bawah' });
+  const wealth = page.locator('.kpi-card').filter({ hasText: 'Kekayaan bersih' });
+  const originalWealth = await wealth.locator('.kpi-value').innerText();
+  await bottom.getByRole('button', { name: 'Investasi' }).click();
+  await expect(page).toHaveURL(/\/investments$/);
+  await page.getByRole('button', { name: 'Buat simpanan pertama' }).click();
+  await page.getByLabel('Nama simpanan').fill('Dana darurat');
+  await page.getByRole('button', { name: 'Simpan Simpanan' }).click();
+  const savings = page.getByRole('article').filter({ hasText: 'Dana darurat' });
+  await expect(savings.getByRole('button', { name: 'Tarik', exact: true })).toBeDisabled();
+  await savings.getByRole('button', { name: 'Setor', exact: true }).click();
+  let dialog = page.getByRole('dialog');
+  await dialog.getByLabel('Dompet sumber').selectOption('bca');
+  await dialog.getByLabel(/Nominal rupiah/).fill('1000000000');
+  await dialog.getByRole('button', { name: 'Setor dana' }).click();
+  await expect(dialog.getByRole('alert')).toHaveText('Saldo dompet asal tidak cukup.');
+  await dialog.getByLabel(/Nominal rupiah/).fill('500000');
+  await dialog.getByRole('button', { name: 'Setor dana' }).click();
+  await expect(savings).toContainText(/Rp\s*500\.000/);
+  await savings.getByRole('button', { name: 'Tarik', exact: true }).click();
+  dialog = page.getByRole('dialog');
+  await dialog.getByLabel('Dompet tujuan').selectOption('gopay');
+  await dialog.getByLabel(/Nominal rupiah/).fill('650000');
+  await dialog.getByRole('button', { name: 'Tarik dana' }).click();
+  await expect(dialog.getByRole('alert')).toHaveText('Saldo simpanan tidak cukup.');
+  await dialog.getByLabel(/Nominal rupiah/).fill('150000');
+  await dialog.getByRole('button', { name: 'Tarik dana' }).click();
+  await page.reload();
+  await expect(savings).toContainText(/Rp\s*350\.000/);
+  await expect(page.getByText(/Dana darurat → GoPay/)).toBeVisible();
+  expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
+
+  await bottom.getByRole('button', { name: 'Transaksi', exact: true }).click();
+  await page.getByLabel('Filter dompet').selectOption({ label: 'Dana darurat' });
+  await expect(page.getByRole('row').filter({ hasText: 'Setoran simpanan' })).toBeVisible();
+  await expect(page.getByRole('row').filter({ hasText: 'Penarikan simpanan' })).toBeVisible();
+  await page.getByRole('button', { name: 'Hapus Setoran simpanan' }).click();
+  await expect(page.getByRole('status')).toContainText('Saldo tujuan tidak cukup');
+  await bottom.getByRole('button', { name: 'Dasbor' }).click();
+  await expect(wealth.locator('.kpi-value')).toHaveText(originalWealth);
+});

@@ -1,9 +1,22 @@
 export type EntryType = 'income' | 'expense' | 'transfer';
-export type Wallet = { id: string; name: string; type: 'bank' | 'ewallet' | 'cash' | 'credit'; openingBalance: number; color: string; archived?: boolean };
+export type Wallet = { id: string; name: string; type: 'bank' | 'ewallet' | 'cash' | 'credit' | 'investment'; openingBalance: number; color: string; archived?: boolean };
 export type Entry = { id: string; type: EntryType; amount: number; walletId: string; targetWalletId?: string; category: string; title: string; note?: string; date: string; receipt?: string };
 export type Budget = { id: string; category: string; limit: number; period?: string };
 export type Recurring = { id: string; title: string; type: 'income' | 'expense'; amount: number; walletId: string; category: string; frequency: 'weekly' | 'monthly' | 'yearly'; nextDate: string; anchorDay?: number; active: boolean };
 export type FinanceData = { wallets: Wallet[]; entries: Entry[]; budgets: Budget[]; recurring: Recurring[]; name: string };
+export type InvestmentMovement = { investmentId: string; direction: 'deposit' | 'withdrawal' };
+
+export function isFundingWallet(wallet: Wallet) {
+  return wallet.type !== 'investment' && wallet.type !== 'credit';
+}
+
+export function investmentMovement(wallets: Wallet[], entry: Entry): InvestmentMovement | undefined {
+  if (entry.type !== 'transfer') return;
+  const target = wallets.find(wallet => wallet.id === entry.targetWalletId);
+  if (target?.type === 'investment') return { investmentId: target.id, direction: 'deposit' };
+  const source = wallets.find(wallet => wallet.id === entry.walletId);
+  if (source?.type === 'investment') return { investmentId: source.id, direction: 'withdrawal' };
+}
 
 export const expenseCategories = ['Makanan & Minuman', 'Transportasi', 'Tagihan & Utilitas', 'Belanja', 'Hiburan', 'Kesehatan', 'Pendidikan', 'Lainnya'];
 export const incomeCategories = ['Gaji', 'Bonus', 'Usaha', 'Investasi', 'Lainnya'];
@@ -70,10 +83,15 @@ export function seedData(today = new Date()): FinanceData {
   };
 }
 
-export function walletBalance(data: FinanceData, id: string): number {
+export function walletBalance(data: FinanceData, id: string, excludeEntryId?: string): number {
   const wallet = data.wallets.find(w => w.id === id);
   if (!wallet) return 0;
-  return data.entries.reduce((sum, entry) => sum + (entry.walletId === id ? entry.type === 'income' ? entry.amount : -entry.amount : 0) + (entry.type === 'transfer' && entry.targetWalletId === id ? entry.amount : 0), wallet.openingBalance);
+  return data.entries.reduce((sum, entry) => {
+    if (entry.id === excludeEntryId) return sum;
+    const outgoing = entry.walletId === id ? (entry.type === 'income' ? entry.amount : -entry.amount) : 0;
+    const incoming = entry.type === 'transfer' && entry.targetWalletId === id ? entry.amount : 0;
+    return sum + outgoing + incoming;
+  }, wallet.openingBalance);
 }
 
 export function monthEntries(data: FinanceData, date: Date): Entry[] {

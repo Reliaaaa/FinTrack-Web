@@ -10,11 +10,10 @@ Repositori [Reliaaaa/FinTrack-Web](https://github.com/Reliaaaa/FinTrack-Web) dir
 
 ## Branch dan gate rilis
 
-1. Kerjakan fitur pada `feature/<nama>` dari `dev`; push hanya branch fitur dan ajukan PR ke `dev`.
-2. `client-build.yml` berjalan pada push fitur dan PR ke `dev`/`main`. Gate: `npm ci`, typecheck, tes unit, audit dependensi, build Next.js, tes integrasi PostgreSQL 16 (migrasi, cron, dan akun), dan tes UI Chromium. Hasil build diunggah sebagai artifact selama 7 hari; kegagalan UI mengunggah trace/laporan. Workflow meninggalkan komentar pada PR atau commit berisi status, run, SHA, branch, serta langkah gagal.
-3. Reviewer memeriksa PR dan hasil CI, lalu menggabungkan ke `dev` secara manual. Uji di preview/staging dan periksa `/api/v1/health`.
-4. Ajukan PR `dev` → `main` setelah fitur dalam lingkup rilis dan gate QA lolos. Penggabungan manual oleh reviewer yang berwenang. `main` untuk rilis stabil.
-5. Workflow `backend-deploy.yml` hanya berjalan atas pemicu manual: preview dari `feature/*` atau `dev`, production hanya dari `main`. Jika kredensial Vercel belum diisi, validasi tetap berjalan dan langkah deploy dilewati dengan pesan jelas. Workflow menulis komentar status pada commit.
+1. Gunakan tiga branch permanen `feature`, `dev`, dan `main`. Sebelum mulai, sinkronkan branch kerja dengan `git fetch origin`, `git switch feature`, `git merge --ff-only origin/feature`, lalu `git merge --ff-only origin/dev`. Buat commit dan push di `feature`.
+2. Ajukan PR `feature` → `dev`. GitHub Actions memeriksa sumber dan tujuan PR, typecheck, tes unit, audit dependensi, build Next.js, integrasi PostgreSQL, dan UI Chromium. Reviewer menggabungkan PR setelah pemeriksaan lulus.
+3. Uji hasil di preview/staging dan periksa `/api/v1/health`. Setelah siap dirilis, ajukan PR `dev` → `main` dan gabungkan setelah pemeriksaan lulus.
+4. Pertahankan ketiga branch setelah merge dan gunakan **Create a merge commit** agar riwayat tetap terhubung. Deploy produksi dari `main`. Workflow manual `backend-deploy.yml` menerima deploy preview dari `feature` atau `dev`.
 
 Build lokal: `npm ci && npm run typecheck && npm test && npm run test:ui && npm run build`. Jalankan build **setelah** tes UI karena server tes memakai direktori `.next` yang sama. CI memisahkan job UI dari job build.
 

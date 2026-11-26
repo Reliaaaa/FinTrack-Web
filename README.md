@@ -182,6 +182,10 @@ npm run test:ui
 npm run build
 ```
 
+## Alur kontribusi
+
+Commit dan push ke branch permanen `feature`. Setelah pemeriksaan lulus, gabungkan lewat pull request `feature` → `dev`, lalu `dev` → `main` untuk rilis produksi. [Panduan branch dan rilis](docs/08-devops.md#branch-dan-gate-rilis)
+
 ## 📚 Dokumentasi
 
 | Produk dan desain | Teknis | Kualitas |

@@ -9,6 +9,33 @@ test('dasbor menampilkan uang digital dan tunai di layar kecil', async ({ page }
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
 });
 
+test('tata letak FinTrack terbaca di dua tema dan empat ukuran layar', async ({ page }) => {
+  await page.goto('/');
+  const dashboard = page.locator('.dashboard-overview');
+  const theme = page.getByRole('button', { name: 'Aktifkan tema gelap' });
+  await expect(dashboard).toBeVisible();
+
+  for (const width of [1440, 1024, 768, 375]) {
+    await page.setViewportSize({ width, height: 844 });
+    expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
+  }
+
+  const period = page.getByLabel('Pilih bulan');
+  await expect(period).toHaveCSS('font-size', '16px');
+  const nav = page.getByRole('navigation', { name: 'Navigasi bawah' });
+  const buttons = nav.locator('.bottom-slot > button:last-child');
+  await expect(buttons).toHaveCount(5);
+  const positions = await buttons.evaluateAll(items => items.map(button => button.getBoundingClientRect().top));
+  expect(new Set(positions).size).toBe(1);
+
+  await theme.click();
+  await expect(page.locator('html')).toHaveAttribute('data-theme', 'dark');
+  expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
+  await page.getByRole('button', { name: 'Cari transaksi', exact: true }).click();
+  await expect(page.getByRole('textbox', { name: 'Cari transaksi' })).toBeFocused();
+  await expect(page.getByRole('textbox', { name: 'Cari transaksi' })).toHaveCSS('font-size', '16px');
+});
+
 test('sumbu arus kas memakai ribuan pada dasbor dan laporan', async ({ page }) => {
   await page.setViewportSize({ width: 375, height: 844 });
   await page.addInitScript(() => {

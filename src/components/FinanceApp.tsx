@@ -389,7 +389,7 @@ export default function FinanceApp({ startOnLogin = false }: { startOnLogin?: bo
       <div className="sidebar-bottom"><div className="help-card"><CircleHelp size={19} /><strong>Butuh bantuan?</strong><p>Pahami arus kas Anda dengan FinTrack.</p><a href="https://github.com/Reliaaaa/FinTrack-Web#readme" target="_blank" rel="noreferrer"><RollingLabel>Lihat panduan</RollingLabel> <ArrowRight size={14} /></a></div><MotionButton className="profile-button" onClick={() => setTab('settings')}><span className="avatar">{data.name.charAt(0).toUpperCase()}</span><span><strong><RollingLabel>{data.name}</RollingLabel></strong><small>{serverMode ? 'Akun pribadi' : 'Mode demo lokal'}</small></span><MoreHorizontal size={17} /></MotionButton></div>
     </aside>
     <div className="main-column">
-      <header className="topbar"><div className="topbar-left"><MotionButton className="icon-button mobile-menu" onClick={() => setMobileMenu(!mobileMenu)} aria-label="Buka menu"><Menu size={22} /></MotionButton><span className="topbar-title">{nav.find(n => n.id === tab)?.label}</span><span className="topbar-divider" /><span className="topbar-subtitle">Ruang keuangan Anda</span>{saving && <span className="status-pill blue" role="status">Menyimpan…</span>}</div><div className="topbar-actions"><label className="period-select"><CalendarDays size={16} /><input type="month" aria-label="Pilih bulan" value={`${period.getFullYear()}-${String(period.getMonth() + 1).padStart(2, '0')}`} onChange={e => { if (e.target.value) { const [year, month] = e.target.value.split('-').map(Number); setPeriod(new Date(year, month - 1, 1)); } }} /></label><MotionButton className="search-trigger" onClick={openTransactionSearch}><Search size={17} /> Cari transaksi...</MotionButton><MotionButton className="icon-button" aria-label={dark ? 'Aktifkan tema terang' : 'Aktifkan tema gelap'} onClick={() => setDark(!dark)}>{dark ? <Sun size={19} /> : <Moon size={19} />}</MotionButton><MotionButton className="icon-button notification" aria-label="Lihat anggaran" onClick={() => setTab('budgets')}><Bell size={19} />{budgetsForMonth(data, period).some(b => current.entries.filter(e => e.type === 'expense' && e.category === b.category).reduce((a, e) => a + e.amount, 0) >= b.limit * .8) && <i />}</MotionButton><span className="avatar header-avatar">{data.name.charAt(0).toUpperCase()}</span>{serverMode && <MotionButton type="button" className="button header-logout" aria-label="Keluar" onClick={logout}><Power size={18} aria-hidden="true" /> Keluar</MotionButton>}</div></header>
+      <header className="topbar"><div className="topbar-left"><MotionButton className="icon-button mobile-menu" onClick={() => setMobileMenu(!mobileMenu)} aria-label="Buka menu"><Menu size={22} /></MotionButton><span className="topbar-title">{nav.find(n => n.id === tab)?.label}</span><span className="topbar-divider" /><span className="topbar-subtitle">Ruang keuangan Anda</span>{saving && <span className="status-pill blue" role="status">Menyimpan…</span>}</div><div className="topbar-actions"><label className="period-select"><CalendarDays size={16} /><input type="month" aria-label="Pilih bulan" value={`${period.getFullYear()}-${String(period.getMonth() + 1).padStart(2, '0')}`} onChange={e => { if (e.target.value) { const [year, month] = e.target.value.split('-').map(Number); setPeriod(new Date(year, month - 1, 1)); } }} /></label><MotionButton className="search-trigger" aria-label="Cari transaksi" onClick={openTransactionSearch}><Search size={17} /> Cari transaksi...</MotionButton><MotionButton className="icon-button" aria-label={dark ? 'Aktifkan tema terang' : 'Aktifkan tema gelap'} onClick={() => setDark(!dark)}>{dark ? <Sun size={19} /> : <Moon size={19} />}</MotionButton><MotionButton className="icon-button notification" aria-label="Lihat anggaran" onClick={() => setTab('budgets')}><Bell size={19} />{budgetsForMonth(data, period).some(b => current.entries.filter(e => e.type === 'expense' && e.category === b.category).reduce((a, e) => a + e.amount, 0) >= b.limit * .8) && <i />}</MotionButton><span className="avatar header-avatar">{data.name.charAt(0).toUpperCase()}</span>{serverMode && <MotionButton type="button" className="button header-logout" aria-label="Keluar" onClick={logout}><Power size={18} aria-hidden="true" /> Keluar</MotionButton>}</div></header>
       <main className="content">
         {!serverMode && <div className="demo-banner" role={serviceIssue ? 'alert' : undefined}>
           <ShieldCheck size={17} />
@@ -437,14 +437,15 @@ function BudgetBar({ spent, limit }: { spent: number; limit: number }) { const p
 function EntrySymbol({ type }: { type: EntryType }) { return <span className={`entry-symbol ${type}`}>{type === 'income' ? <ArrowDownLeft size={18} /> : type === 'transfer' ? <ArrowLeftRight size={17} /> : <ArrowUpRight size={18} />}</span>; }
 function ChartTip({ active, payload, label }: { active?: boolean; payload?: { name: string; value: number; color: string }[]; label?: string }) { if (!active || !payload?.length) return null; return <div className="chart-tip"><strong>{label}</strong>{payload.map(p => <div key={p.name}><span style={{ background: p.color }} />{p.name}: {rupiah(p.value)}</div>)}</div>; }
 
-function DashboardCard({ label, value, icon: Icon, detail, primary }: {
+function DashboardCard({ label, value, icon: Icon, detail, primary, tone }: {
   label: string;
   value: number | null;
   icon: LucideIcon;
   detail: string;
   primary?: boolean;
+  tone?: 'expense' | 'budget';
 }) {
-  return <div className={primary ? 'card kpi-card kpi-primary' : 'card kpi-card'}>
+  return <div className={primary ? 'card kpi-card kpi-primary' : 'card kpi-card'} data-tone={tone}>
     <div className="kpi-head"><span>{label}</span><span className="kpi-icon"><Icon size={19} aria-hidden="true" /></span></div>
     <strong className="kpi-value">{value === null ? '—' : rupiah(value)}</strong>
     <p className="kpi-caption">{detail}</p>
@@ -472,8 +473,8 @@ function Dashboard({ data, current, categories, trend, period, open, go }: {
   const cards = [
     { label: 'Kekayaan bersih', value: current.balance, icon: WalletIcon, detail: assetsDetail },
     { label: 'Pemasukan', value: current.income, icon: ArrowDownLeft, detail: 'Total pada bulan terpilih' },
-    { label: 'Pengeluaran', value: current.expense, icon: ArrowUpRight, detail: 'Total pada bulan terpilih' },
-    { label: 'Sisa anggaran', value: current.budgetLimit ? current.budgetRemaining : null, icon: ShieldCheck, detail: current.budgetLimit ? Math.round(current.spending / current.budgetLimit * 100) + '% terpakai' : 'Belum ada anggaran' },
+    { label: 'Pengeluaran', value: current.expense, icon: ArrowUpRight, tone: 'expense' as const, detail: 'Total pada bulan terpilih' },
+    { label: 'Sisa anggaran', value: current.budgetLimit ? current.budgetRemaining : null, icon: ShieldCheck, tone: 'budget' as const, detail: current.budgetLimit ? Math.round(current.spending / current.budgetLimit * 100) + '% terpakai' : 'Belum ada anggaran' },
   ];
   const chartColors = ['#235347', '#8eb69b', '#467d6d', '#aecdb4', '#688f7c', '#163832'];
   const visibleCategories = categories.slice(0, 5);

@@ -225,3 +225,11 @@
   font-weight: 700;
 }
 .password-toggle:hover { background: var(--green-soft); }
+
+.header-logout { background: #b91c1c; color: #fff; border-color: #b91c1c; }
+.header-logout:hover { background: #991b1b; border-color: #991b1b; }
+.header-logout svg { flex: none; }
+@media (max-width: 700px) {
+  .header-logout { width: 44px; min-height: 44px; padding: 0; gap: 0; }
+  .header-logout .roll-label { position: absolute; width: 1px; height: 1px; clip-path: inset(50%); }
+}

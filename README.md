@@ -197,6 +197,10 @@ Commit dan push ke branch permanen `feature`. Setelah pemeriksaan lulus, gabungk
 | [Ekspor Google Stitch](docs/stitch/) | [Prompt pengembangan awal](docs/reference/Codex-master-prompt.md) | |
 | [Panduan UI/UX untuk Codex](docs/10-uiux-codex.md) | | |
 
+## Lisensi
+
+[MIT](LICENSE)
+
 ---
 
 <div align="center">

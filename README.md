@@ -182,7 +182,15 @@ npm run test:ui
 npm run build
 ```
 
-## Alur kontribusi
+## Kontribusi
+
+Punya saran, menemukan bug, atau ingin menyumbang kode? [Cek issue yang sudah ada](https://github.com/Reliaaaa/FinTrack-Web/issues). Kalau topiknya sudah dibahas, tambahkan konteks di issue tersebut. Kalau belum, [buat issue baru](https://github.com/Reliaaaa/FinTrack-Web/issues/new) dengan judul yang spesifik.
+
+- **Laporkan bug.** Sebutkan halaman, langkah untuk mengulang masalah, hasil yang kamu harapkan, dan hasil yang muncul. Tambahkan browser atau perangkat jika relevan. Gunakan data contoh jika menyertakan tangkapan layar.
+- **Usulkan fitur atau perbaikan.** Jelaskan masalah yang kamu alami, perubahan yang kamu usulkan, dan contoh cara fitur itu dipakai.
+- **Usulkan perubahan kode.** Jelaskan bagian yang kamu ubah dan cara mengujinya. Sertakan cuplikan kode, tautan commit, atau tautan branch di fork kamu agar pengelola bisa meninjaunya.
+
+### Alur rilis untuk pengelola
 
 Commit dan push ke branch permanen `feature`. Setelah pemeriksaan lulus, gabungkan lewat pull request `feature` → `dev`, lalu `dev` → `main` untuk rilis produksi. [Panduan branch dan rilis](docs/08-devops.md#branch-dan-gate-rilis)
 
@@ -196,6 +204,10 @@ Commit dan push ke branch permanen `feature`. Setelah pemeriksaan lulus, gabungk
 | [Spesifikasi UI/UX](docs/reference/UI-UX-Stitch.md) | [DevOps](docs/08-devops.md) | |
 | [Ekspor Google Stitch](docs/stitch/) | [Prompt pengembangan awal](docs/reference/Codex-master-prompt.md) | |
 | [Panduan UI/UX untuk Codex](docs/10-uiux-codex.md) | | |
+
+## Lisensi
+
+[MIT](LICENSE)
 
 ---
 

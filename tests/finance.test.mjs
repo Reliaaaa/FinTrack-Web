@@ -30,6 +30,29 @@ test('monthly totals respect the selected month', () => {
   assert.notEqual(current.expense, previous.expense);
 });
 
+test('dashboard wallet totals distinguish digital money, cash, and saved funds', () => {
+  const date = new Date(2026, 10, 15);
+  const data = seedData(date);
+  const baseline = metrics(data, date);
+  assert.equal(baseline.cashBalance, walletBalance(data, 'cash'));
+  assert.equal(baseline.digitalBalance, baseline.balance - baseline.cashBalance);
+
+  data.wallets.push(
+    { id: 'credit', name: 'Kartu kredit', type: 'credit', openingBalance: 0, color: '#235347' },
+    { id: 'investment', name: 'Dana darurat', type: 'investment', openingBalance: 0, color: '#235347' },
+  );
+  data.entries.push(
+    { id: 'cash-to-bank', type: 'transfer', walletId: 'cash', targetWalletId: 'bca', amount: 100000, category: 'Lainnya', title: 'Setor tunai', date: '2026-11-15' },
+    { id: 'bank-to-savings', type: 'transfer', walletId: 'bca', targetWalletId: 'investment', amount: 200000, category: 'Investasi', title: 'Dana darurat', date: '2026-11-15' },
+    { id: 'credit-expense', type: 'expense', walletId: 'credit', amount: 30000, category: 'Lainnya', title: 'Pembayaran kartu', date: '2026-11-15' },
+  );
+
+  const updated = metrics(data, date);
+  assert.equal(updated.cashBalance, baseline.cashBalance - 100000);
+  assert.equal(updated.digitalBalance, baseline.digitalBalance + 100000 - 200000 - 30000);
+  assert.equal(updated.balance, baseline.balance - 30000);
+});
+
 test('monthly recurrence clamps end-of-month dates', () => {
   assert.equal(nextOccurrence('2026-01-31', 'monthly'), '2026-02-28');
   assert.equal(nextOccurrence('2026-02-28', 'monthly', 31), '2026-03-31');

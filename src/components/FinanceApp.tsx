@@ -1,7 +1,7 @@
 'use client';
 
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { Activity, ArrowDownLeft, ArrowDownRight, ArrowLeftRight, ArrowRight, ArrowUpRight, BarChart3, Bell, CalendarDays, Check, ChevronDown, CircleHelp, CreditCard, Download, FileText, Filter, LayoutDashboard, Menu, Moon, MoreHorizontal, Plus, Power, PiggyBank, Repeat2, Search, Settings, ShieldCheck, Sun, Trash2, TrendingUp, Wallet as WalletIcon, X } from 'lucide-react';
+import { Activity, ArrowDownLeft, ArrowDownRight, ArrowLeftRight, ArrowRight, ArrowUpRight, Banknote, BarChart3, Bell, CalendarDays, Check, ChevronDown, CircleHelp, CreditCard, Download, FileText, Filter, LayoutDashboard, Menu, Moon, MoreHorizontal, Plus, Power, PiggyBank, Repeat2, Search, Settings, ShieldCheck, Smartphone, Sun, Trash2, TrendingUp, Wallet as WalletIcon, X, type LucideIcon } from 'lucide-react';
 import { Area, AreaChart, Bar, BarChart, CartesianGrid, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts';
 import { Budget, categoryColors, Entry, EntryType, expenseCategories, FinanceData, incomeCategories, investmentMovement, InvestmentMovement, monthKey, budgetsForMonth, newFinanceData, Recurring, seedData, Wallet, walletBalance } from '@/lib/finance';
 import { byCategory, cashflow, metrics } from '@/lib/metrics';
@@ -417,6 +417,20 @@ function BudgetBar({ spent, limit }: { spent: number; limit: number }) { const p
 function EntrySymbol({ type }: { type: EntryType }) { return <span className={`entry-symbol ${type}`}>{type === 'income' ? <ArrowDownLeft size={18} /> : type === 'transfer' ? <ArrowLeftRight size={17} /> : <ArrowUpRight size={18} />}</span>; }
 function ChartTip({ active, payload, label }: { active?: boolean; payload?: { name: string; value: number; color: string }[]; label?: string }) { if (!active || !payload?.length) return null; return <div className="chart-tip"><strong>{label}</strong>{payload.map(p => <div key={p.name}><span style={{ background: p.color }} />{p.name}: {rupiah(p.value)}</div>)}</div>; }
 
+function DashboardCard({ label, value, icon: Icon, detail, primary }: {
+  label: string;
+  value: number | null;
+  icon: LucideIcon;
+  detail: string;
+  primary?: boolean;
+}) {
+  return <div className={primary ? 'card kpi-card kpi-primary' : 'card kpi-card'}>
+    <div className="kpi-head"><span>{label}</span><span className="kpi-icon"><Icon size={19} aria-hidden="true" /></span></div>
+    <strong className="kpi-value">{value === null ? '—' : rupiah(value)}</strong>
+    <p className="kpi-caption">{detail}</p>
+  </div>;
+}
+
 function Dashboard({ data, current, categories, trend, period, open, go }: {
   data: FinanceData;
   current: ReturnType<typeof metrics>;
@@ -461,11 +475,11 @@ function Dashboard({ data, current, categories, trend, period, open, go }: {
       action={<MotionButton className="button button-outline" onClick={() => window.print()}><Download size={17} /> Unduh ringkasan</MotionButton>}
     />
     <div className="kpi-grid">
-      {cards.map((card, index) => <div className={`card kpi-card ${index === 0 ? 'kpi-primary' : ''}`} key={card.label}>
-        <div className="kpi-head"><span>{card.label}</span><span className="kpi-icon"><card.icon size={19} /></span></div>
-        <strong className="kpi-value">{card.value === null ? '—' : rupiah(card.value)}</strong>
-        <p className="kpi-caption">{card.detail}</p>
-      </div>)}
+      {cards.map((card, index) => <DashboardCard key={card.label} {...card} primary={index === 0} />)}
+    </div>
+    <div className="kpi-grid dashboard-money-balances" role="group" aria-label="Saldo uang saat ini">
+      <DashboardCard label="Uang Digital" value={current.digitalBalance} icon={Smartphone} detail="Bank, e-wallet, dan kartu kredit" />
+      <DashboardCard label="Uang Tunai" value={current.cashBalance} icon={Banknote} detail="Total saldo dompet tunai" />
     </div>
 
     <div className="dashboard-chart-grid">

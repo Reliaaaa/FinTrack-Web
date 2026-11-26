@@ -11,13 +11,14 @@ Dokumen ini memetakan UI FinTrack dan state yang diperlukan untuk menuntaskan fi
   └── Lupa kata sandi ── email tautan ──> /reset ──> Login
                             ├── Transaksi ──> Tambah / Ubah Transaksi
                             ├── Dompet ──> Tambah / Ubah Dompet
+                            ├── Investasi ──> Simpanan / Setor / Tarik
                             ├── Anggaran ──> Tambah / Ubah Anggaran
                             ├── Tagihan Berulang ──> Tambah / Ubah Jadwal
                             ├── Laporan ──> Ekspor / Cetak
                             └── Pengaturan ──> Profil / Tema / Data
 ```
 
-Pada desktop, sidebar tetap berisi tujuh tujuan dan tombol **Catat Transaksi**. Header memuat bulan pilihan, pintasan pencarian yang menuju Transaksi, tema, dan indikator anggaran. Pada lebar ≤900 px, menu utama dapat dibuka dari header; pada ≤700 px, navigasi bawah menyediakan Dasbor, Transaksi, Anggaran, Dompet, serta tombol tambah mengambang. Laporan, Jadwal, dan Pengaturan tetap dapat dicapai lewat menu header. URL `/transactions`, `/wallets`, `/budgets`, `/recurring`, `/reports`, `/settings` dapat dibuka langsung.
+Sidebar desktop menyediakan delapan menu dan tombol **Catat Transaksi**. Header memuat pilihan bulan, pintasan pencarian Transaksi, dan pengaturan tema. Pada ponsel, navigasi bawah menyediakan Dasbor, Transaksi, Anggaran, Investasi, dan Dompet. Buka Tagihan Berulang, Laporan, atau Pengaturan melalui tombol menu di header.
 
 ## Wireframe teks
 
@@ -53,18 +54,32 @@ DESKTOP                                      MOBILE
 
 Alur UI Google OAuth, lupa kata sandi, dan reset sudah tersedia, tetapi perlu pengujian dengan Google, Resend, dan PostgreSQL nyata sebelum dinyatakan selesai. Paginasi transaksi masih di browser. Form menampilkan status penulisan akun, mengembalikan kesalahan simpan melalui toast, dan melakukan rollback bila jaringan/server gagal. Filter tanggal dan kategori serta pagu khusus tiap bulan sudah tersedia.
 
-## Token dan komponen
+## Aturan visual di CSS
 
-| Token | Light | Dark | Kegunaan |
-| --- | --- | --- | --- |
-| Latar | `#F8FAFC` | `#090D16` | Kanvas |
-| Surface | `#FFFFFF` | `#111827` | Kartu/modal/sidebar |
-| Border | `#E2E8F0` | `#293448` | Pemisah ringan |
-| Teks | `#0F172A` | `#F8FAFC` | Konten utama |
-| Emerald | `#059669` | `#34D399` | Pemasukan, aksi aktif |
-| Rose | `#E11D48` | `#FB7185` | Pengeluaran, bahaya |
-| Amber | `#B45309` | `#FBBF24` | Anggaran mendekati batas |
-| Blue | `#2563EB` | `#60A5FA` | Transfer, bantuan |
+Gunakan [`globals.css`](../src/app/globals.css) sebagai acuan. Tema gelap mengganti nilai token warna melalui `data-theme="dark"`; komponen memakai token yang sama di kedua tema.
+
+| Token CSS | Terang | Gelap | Pemakaian |
+| --- | --- | --- | --- | --- |
+| `--bg` | `#EDF5EE` | `#051F20` | Latar aplikasi |
+| `--surface` | `#FFFFFF` | `#0B2B26` | Kartu, header, tabel, dan modal |
+| `--ink` | `#0B2B26` | `#DAF1DE` | Teks utama dan nominal |
+| `--muted` | `#49685E` | `#A1BFB1` | Keterangan, label grafik, dan isi sekunder |
+| `--line` | `#D6E6DA` | `#2C5248` | Garis tepi dan pemisah |
+| `--green` / `--green-soft` | `#235347` / `#DAF1DE` | `#A8D2B2` / `#163832` | Aksi dan pemasukan |
+| `--rose` / `--rose-soft` | `#A83D58` / `#FAEAF0` | `#F4A5B8` / `#492A38` | Pengeluaran dan bahaya |
+| `--amber` / `--amber-soft` | `#8C5117` / `#FDF1DE` | `#EDC982` / `#453A24` | Anggaran dan peringatan |
+| `--blue` / `--blue-soft` | `#356459` / `#E7F2EC` | `#A7CEBF` / `#163832` | Transfer dan informasi |
+| `--focus` | `#18735E` | `#A8D2B2` | Ring fokus dan tepi kontrol aktif |
+
+| Aturan | Nilai dan penerapan |
+| --- | --- |
+| Tipografi | Label dan keterangan yang dipakai bersama menggunakan 12 px, teks kecil 13 px, dan isi 14 px. Judul halaman mengikuti lebar layar dari 24 sampai 32 px. Judul Dasbor dari 26 sampai 40 px. |
+| Jarak dan bentuk | Langkah jarak yang dipakai adalah 8, 12, 16, 20, dan 24 px. Margin horizontal 16 sampai 34 px, jarak kartu 12 sampai 22 px, radius kartu 16 px, dan radius kontrol 10 px. |
+| Desktop | Empat kartu ringkasan dan dua kartu saldo. Grafik arus kas mendapat kolom lebih lebar dari grafik kategori. Sidebar tetap terbuka di atas 900 px. |
+| Tablet | Hingga 900 px, sidebar dibuka lewat tombol menu, pencarian tampil sebagai ikon, dan kartu ringkasan menjadi dua kolom. |
+| Ponsel | Hingga 700 px, grafik dan panel bawah menjadi satu kolom, legenda kategori membungkus nama panjang, dan navigasi bawah menyisakan ruang untuk tombol tambah terpisah. Kontrol header berukuran 44 px dan ukuran teks input sedikitnya 16 px. Hingga 500 px, kontrol periode mendapat baris sendiri bersama aksi header. |
+| Tabel dan grafik | Tabel bergulir di dalam panel pada layar sempit. Label sumbu memakai `rb` dan `jt` sesuai nominal. Warna grafik disertai legenda, sedangkan nilai lengkap tersedia pada tooltip arus kas. |
+| Fokus dan gerakan | Tampilkan fokus keyboard pada kontrol dan gunakan preferensi reduced motion untuk animasi. |
 
 Tipografi mengikuti SF Pro Display dari [LandingPageReliaaaa](https://github.com/Reliaaaa/LandingPageReliaaaa). FinTrack memilih SF Pro bawaan perangkat Apple dan memakai Inter atau font sistem pada perangkat lain. Berkas font Apple tidak disematkan karena [lisensinya](https://developer.apple.com/fonts/) membatasi penggunaan dan distribusi. Angka memakai `tabular-nums` dan nominal diformat dengan `Intl.NumberFormat('id-ID')`.
 

@@ -3,7 +3,7 @@ name: Client build
 on:
   push:
     branches:
-      - 'feature/**'
+      - feature
       - dev
   pull_request:
     branches:
@@ -15,6 +15,25 @@ permissions:
   contents: read
 
 jobs:
+  branch-flow:
+    name: Branch flow
+    if: github.event_name == 'pull_request'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Verify the source and target branches
+        env:
+          SOURCE_REPOSITORY: ${{ github.event.pull_request.head.repo.full_name }}
+          SOURCE_BRANCH: ${{ github.head_ref }}
+          TARGET_BRANCH: ${{ github.base_ref }}
+        run: |
+          if [[ "$SOURCE_REPOSITORY" == "$GITHUB_REPOSITORY" ]]; then
+            case "$SOURCE_BRANCH:$TARGET_BRANCH" in
+              feature:dev|dev:main) exit 0 ;;
+            esac
+          fi
+          echo "::error::Gunakan pull request feature → dev atau dev → main dari repositori ini."
+          exit 1
+
   verify:
     name: Build and PostgreSQL integration tests
     runs-on: ubuntu-latest
@@ -87,7 +106,7 @@ jobs:
   report:
     name: Report build status
     if: always()
-    needs: [verify, ui]
+    needs: [branch-flow, verify, ui]
     runs-on: ubuntu-latest
     permissions:
       contents: write
@@ -100,8 +119,9 @@ jobs:
           script: |
             const verify = '${{ needs.verify.result }}';
             const ui = '${{ needs.ui.result }}';
-            const status = verify === 'success' && ui === 'success' ? 'SUKSES' : 'GAGAL';
             const pr = context.payload.pull_request;
+            const branchFlow = '${{ needs.branch-flow.result }}';
+            const status = verify === 'success' && ui === 'success' && (!pr || branchFlow === 'success') ? 'SUKSES' : 'GAGAL';
             const branch = pr?.head.ref || context.ref.replace('refs/heads/', '');
             const sha = pr?.head.sha || context.sha;
             const body = [
@@ -112,6 +132,7 @@ jobs:
               `Versi: ${sha.slice(0, 7)}`,
               `Typecheck, unit test, audit, build, PostgreSQL: ${verify}`,
               `Chromium UI test: ${ui}`,
+              ...(pr ? [`Branch flow: ${branchFlow}`] : []),
               status === 'GAGAL' ? 'Lihat langkah gagal pada tautan run, perbaiki, lalu jalankan ulang CI sebelum merge.' : 'Seluruh gate otomatis pada PR ini lulus.',
             ].join('\n');
             await core.summary.addRaw(body).write();

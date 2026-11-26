@@ -1,5 +1,7 @@
 # Panduan Git Workflow & Branching Strategy
 
+> Referensi awal. FinTrack Web sekarang memakai [tiga branch permanen dan alur rilis terbaru](../08-devops.md#branch-dan-gate-rilis).
+
 Dokumen ini menjelaskan alur kerja (workflow) standar untuk pengelolaan versi kode menggunakan Git. Tujuannya adalah untuk menjaga agar repository tetap rapi, meminimalisir *bug* di tahap produksi, dan mempermudah kolaborasi tim.
 
 ---

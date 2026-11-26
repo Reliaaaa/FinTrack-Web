@@ -44,7 +44,7 @@ Kerjakan berurutan. Satu tugas, satu commit.
 
 ## Aturan kerja
 
-1. Buat branch `feature/<nama-tugas>` dari `dev` terbaru, sesuai `docs/reference/git-workflow.md`. Pastikan `dev` sudah memuat dokumen ini atau salin ID tugas ke prompt.
+1. Sinkronkan branch permanen `feature` dengan `dev` sebelum mulai. Ikuti [alur kontribusi dan rilis](08-devops.md#branch-dan-gate-rilis).
 2. Jangan ubah API, skema data, validasi server, atau logika saldo.
 3. Jalankan `npm run typecheck`, `npm test`, `npm run test:ui`, dan `npm run build`.
 4. Sertakan screenshot 375 dan 1440 px, tema terang dan gelap, di PR.

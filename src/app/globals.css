@@ -189,7 +189,13 @@
 .dashboard-overview .dashboard-bottom-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); gap: var(--panel-gap); }
 .dashboard-overview .padded-card { padding: var(--space-4); }
 .dashboard-overview .empty-state { min-height: 164px; }
-.dashboard-overview .recent-row { gap: 7px; }
+.dashboard-overview .recent-row { min-width: 0; gap: 7px; }
+.dashboard-overview .recent-row > .amount {
+  max-width: 44%;
+  white-space: normal;
+  overflow-wrap: anywhere;
+  text-align: right;
+}
 .dashboard-overview .recent-row .entry-symbol, .bill-icon { width: 29px; height: 29px; }
 .dashboard-overview .budget-mini { padding: 8px 9px; }
 .dashboard-overview .budget-mini-list { gap: 7px; }
@@ -406,7 +412,11 @@
   border-color: var(--focus);
   box-shadow: 0 0 0 1px var(--focus);
 }
-.sidebar { overflow-y: auto; }
+.sidebar {
+  overflow-y: auto;
+  scrollbar-width: thin;
+  scrollbar-color: #467568 transparent;
+}
 
 @media screen {
   .topbar { padding-inline: var(--page-gutter); }
@@ -478,8 +488,13 @@
 }
 
 @media (max-width: 500px) {
-  .topbar { display: grid; gap: 4px; padding-block: 6px var(--space-3); }
-  .topbar-actions { min-width: 0; }
+  .topbar {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr);
+    gap: 4px;
+    padding-block: 6px var(--space-3);
+  }
+  .topbar-actions { width: 100%; min-width: 0; }
   .period-select { flex: 1; min-width: 0; }
   .period-select input { flex: 1; width: 100%; min-width: 0; }
   .period-select > svg { flex: none; }

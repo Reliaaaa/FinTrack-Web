@@ -17,7 +17,10 @@ test('tata letak FinTrack terbaca di dua tema dan empat ukuran layar', async ({ 
 
   for (const width of [1440, 1024, 768, 375]) {
     await page.setViewportSize({ width, height: 844 });
-    expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
+    await expect.poll(
+      () => page.evaluate(() => document.documentElement.scrollWidth - innerWidth),
+      { message: `Konten melebar pada ${width} px` },
+    ).toBeLessThanOrEqual(0);
   }
 
   const period = page.getByLabel('Pilih bulan');
@@ -30,7 +33,7 @@ test('tata letak FinTrack terbaca di dua tema dan empat ukuran layar', async ({ 
 
   await theme.click();
   await expect(page.locator('html')).toHaveAttribute('data-theme', 'dark');
-  expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
+  await expect.poll(() => page.evaluate(() => document.documentElement.scrollWidth - innerWidth)).toBeLessThanOrEqual(0);
   await page.getByRole('button', { name: 'Cari transaksi', exact: true }).click();
   await expect(page.getByRole('textbox', { name: 'Cari transaksi' })).toBeFocused();
   await expect(page.getByRole('textbox', { name: 'Cari transaksi' })).toHaveCSS('font-size', '16px');

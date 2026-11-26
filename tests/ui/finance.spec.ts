@@ -1,5 +1,14 @@
 import { test, expect } from '@playwright/test';
 
+test('dasbor menampilkan uang digital dan tunai di layar kecil', async ({ page }) => {
+  await page.setViewportSize({ width: 375, height: 844 });
+  await page.goto('/');
+  const balances = page.getByRole('group', { name: 'Saldo uang saat ini' });
+  await expect(balances.locator('.kpi-card').filter({ hasText: 'Uang Digital' })).toContainText(/Rp\s*90\.885\.000/);
+  await expect(balances.locator('.kpi-card').filter({ hasText: 'Uang Tunai' })).toContainText(/Rp\s*1\.150\.000/);
+  expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
+});
+
 test('transaksi demo bertahan setelah reload dan bisa dihapus', async ({ page }) => {
   await page.goto('/transactions');
   await page.getByRole('main').getByRole('button', { name: 'Catat Transaksi', exact: true }).click();

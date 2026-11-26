@@ -4,11 +4,19 @@ export function metrics(data: FinanceData, date: Date) {
   const entries = monthEntries(data, date);
   const income = entries.filter(e => e.type === 'income').reduce((a, e) => a + e.amount, 0);
   const expense = entries.filter(e => e.type === 'expense').reduce((a, e) => a + e.amount, 0);
-  const balance = data.wallets.reduce((a, w) => a + walletBalance(data, w.id), 0);
+  let balance = 0;
+  let digitalBalance = 0;
+  let cashBalance = 0;
+  for (const wallet of data.wallets) {
+    const amount = walletBalance(data, wallet.id);
+    balance += amount;
+    if (wallet.type === 'cash') cashBalance += amount;
+    else if (wallet.type === 'bank' || wallet.type === 'ewallet' || wallet.type === 'credit') digitalBalance += amount;
+  }
   const monthlyBudgets = budgetsForMonth(data, date);
   const budgetLimit = monthlyBudgets.reduce((a, b) => a + b.limit, 0);
   const spending = monthlyBudgets.reduce((a, b) => a + entries.filter(e => e.type === 'expense' && e.category === b.category).reduce((s, e) => s + e.amount, 0), 0);
-  return { entries, income, expense, balance, budgetLimit, spending, budgetRemaining: budgetLimit - spending, savingsRate: income ? Math.round((income - expense) / income * 100) : 0 };
+  return { entries, income, expense, balance, digitalBalance, cashBalance, budgetLimit, spending, budgetRemaining: budgetLimit - spending, savingsRate: income ? Math.round((income - expense) / income * 100) : 0 };
 }
 
 export function byCategory(data: FinanceData, date: Date) {

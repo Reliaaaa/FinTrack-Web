@@ -15,7 +15,11 @@ for (const width of [375, 1440]) {
     await expect(page.getByRole('button', { name: 'Simpan kata sandi' })).toBeEnabled();
     await expect(page).toHaveURL('/reset');
     expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
-    await page.getByLabel('Kata sandi baru').fill('NewValidPass123!');
+    const password = page.getByLabel('Kata sandi baru');
+    await password.fill('NewValidPass123!');
+    await expect(password).toHaveAttribute('type', 'password');
+    await page.getByRole('button', { name: 'Lihat kata sandi' }).click();
+    await expect(password).toHaveAttribute('type', 'text');
     await page.getByRole('button', { name: 'Simpan kata sandi' }).click();
     await expect(page.getByRole('status')).toHaveText('Kata sandi berhasil diubah. Silakan masuk kembali.');
   });

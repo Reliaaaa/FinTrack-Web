@@ -8,6 +8,7 @@ import { byCategory, cashflow, metrics } from '@/lib/metrics';
 import { compact, dateLabel, monthLabel, rupiah } from '@/lib/format';
 import { download, downloadCsv, downloadIcs, downloadXlsx } from '@/lib/export';
 import { MotionButton, RollingLabel } from './MotionButton';
+import { PasswordField } from './PasswordField';
 import { SidebarNav } from './SidebarNav';
 
 type Tab = 'dashboard' | 'transactions' | 'wallets' | 'budgets' | 'recurring' | 'reports' | 'settings';
@@ -683,7 +684,7 @@ function AuthScreen({ available, connectionIssue, options, sessionNotice, onSucc
           {available && <form onSubmit={submit}>
             {register && <label>Nama lengkap<input value={name} onChange={e => setName(e.target.value)} required maxLength={60} /></label>}
             <label>Alamat email<input type="email" value={email} onChange={e => setEmail(e.target.value)} required autoComplete="email" placeholder="nama@email.com" /></label>
-            {!forgot && <label>Kata sandi<input type="password" value={password} onChange={e => setPassword(e.target.value)} required minLength={8} maxLength={register ? 72 : 128} autoComplete={register ? 'new-password' : 'current-password'} placeholder="Minimal 8 karakter" /></label>}
+            {!forgot && <PasswordField key={register ? 'register' : 'login'} label="Kata sandi" value={password} onChange={e => setPassword(e.target.value)} required minLength={8} maxLength={register ? 72 : 128} autoComplete={register ? 'new-password' : 'current-password'} placeholder="Minimal 8 karakter" />}
             {notice && <p role="status">{notice}</p>}
             {error && <p className="form-error" role="alert">{error}</p>}
             <MotionButton className="button button-dark auth-submit" type="submit" disabled={busy}>

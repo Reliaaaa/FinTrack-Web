@@ -8,7 +8,7 @@
 
 Aplikasi keuangan pribadi berbahasa Indonesia untuk ponsel dan desktop.
 
-[![Client build](https://github.com/Reliaaaa/FinTrack-Web/actions/workflows/client-build.yml/badge.svg?branch=dev)](https://github.com/Reliaaaa/FinTrack-Web/actions/workflows/client-build.yml)
+[![Client build](https://github.com/Reliaaaa/FinTrack-Web/actions/workflows/client-build.yml/badge.svg?branch=dev)](https://github.com/Reliaaaa/FinTrack-Web/actions/workflows/client-build.yml) [![MIT License](https://img.shields.io/badge/license-MIT-235347)](LICENSE)
 ![Next.js 15](https://img.shields.io/badge/Next.js-15-000000?logo=nextdotjs&logoColor=white)
 ![React 19](https://img.shields.io/badge/React-19-20232A?logo=react&logoColor=61DAFB)
 ![TypeScript](https://img.shields.io/badge/TypeScript-5-3178C6?logo=typescript&logoColor=white)

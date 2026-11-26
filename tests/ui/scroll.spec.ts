@@ -18,7 +18,7 @@ test('wheel, scrollbar, tema, dan modal tetap bekerja setelah resize', async ({ 
   await expect.poll(() => scrollPosition(page)).toBeGreaterThan(0);
   await page.getByRole('button', { name: 'Aktifkan tema gelap' }).click();
   await expect(page.locator('html')).toHaveAttribute('data-theme', 'dark');
-  await page.locator('.sidebar-cta').click();
+  await page.locator('.dock-create').click();
   await expect(page.getByRole('dialog')).toBeVisible();
   expect(await page.evaluate(() => document.documentElement.classList.contains('lenis-stopped'))).toBe(true);
   const note = page.getByPlaceholder('Tambahkan detail transaksi...');

@@ -115,8 +115,14 @@ test('PostgreSQL: akun terisolasi, snapshot persisten, konflik versi, reset dan 
     const initial = await api(base, '/api/v1/data', { cookie: a });
     const data = {
       name: 'QA A',
-      wallets: [{ id: 'qa-cash', name: 'Tunai QA', type: 'cash', openingBalance: 100000, color: '#10b981' }],
-      entries: [{ id: 'qa-entry', type: 'expense', amount: 12000, walletId: 'qa-cash', category: 'Makanan & Minuman', title: 'Makan QA', date: '2026-11-25' }],
+      wallets: [
+        { id: 'qa-cash', name: 'Tunai QA', type: 'cash', openingBalance: 100000, color: '#10b981' },
+        { id: 'qa-investment', name: 'Dana darurat QA', type: 'investment', openingBalance: 0, color: '#235347' },
+      ],
+      entries: [
+        { id: 'qa-entry', type: 'expense', amount: 12000, walletId: 'qa-cash', category: 'Makanan & Minuman', title: 'Makan QA', date: '2026-11-25' },
+        { id: 'qa-deposit', type: 'transfer', amount: 20000, walletId: 'qa-cash', targetWalletId: 'qa-investment', category: 'Investasi', title: 'Setoran simpanan', date: '2026-11-25' },
+      ],
       budgets: [{ id: 'qa-budget', category: 'Makanan & Minuman', limit: 50000, period: '2026-11' }],
       recurring: [],
     };

@@ -23,6 +23,7 @@ const nav: { id: Tab; label: string; icon: typeof LayoutDashboard }[] = [
 const today = () => { const date = new Date(); return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`; };
 const id = () => crypto.randomUUID();
 const money = (value: string) => Number(value.replace(/[^\d]/g, '')) || 0;
+const chartMotion = { isAnimationActive: 'auto', animationDuration: 420, animationEasing: 'ease-out' } as const;
 const demoKey = 'fintrack-demo-v1';
 const localModeKey = 'fintrack-local-mode';
 const sessionChangeKey = 'fintrack-session-change';
@@ -379,25 +380,27 @@ export default function FinanceApp({ startOnLogin = false }: { startOnLogin?: bo
           <a href="/login"><RollingLabel>Masuk / Daftar</RollingLabel> <ArrowRight size={14} /></a>
         </div>}
         {serverMode && conflict && <div className="demo-banner" role="alert"><ShieldCheck size={17} /><span><strong>Konflik data.</strong> Perubahan lokal Anda tersimpan sebagai draf di browser. Unduh salinannya sebelum memakai data server terbaru.</span><MotionButton onClick={saveConflictDraft}>Unduh draf <Download size={14} /></MotionButton><MotionButton onClick={loadLatest}>Muat data terbaru <ArrowRight size={14} /></MotionButton></div>}
-        {tab === 'dashboard' && <Dashboard data={data} current={current} categories={categories} trend={trend} period={period} open={openEditor} go={setTab} />}
-        {tab === 'transactions' && <Transactions data={data} entries={data.entries} open={openEditor} remove={deleteEntry} />}
-        {tab === 'wallets' && <Wallets data={data} open={openEditor} remove={deleteWallet} commit={commit} />}
-        {tab === 'investments' && <>
-          <PageHeading title="Investasi" eyebrow="SIMPANAN" description="Sisihkan dana dari dompet untuk tabungan atau tujuan keuangan Anda." action={<MotionButton className="button button-dark" onClick={() => openEditor({ kind: 'wallet', investment: true })}><Plus size={18} /> Buat simpanan</MotionButton>} />
-          <SavingsCards
-            data={data}
-            onCreate={() => openEditor({ kind: 'wallet', investment: true })}
-            onRename={item => openEditor({ kind: 'wallet', item, investment: true })}
-            onRemove={deleteWallet}
-            onTransfer={movement => openEditor({ kind: 'investment-transfer', ...movement })}
-            onAddWallet={() => openEditor({ kind: 'wallet' })}
-            onViewTransactions={() => setTab('transactions')}
-          />
-        </>}
-        {tab === 'budgets' && <Budgets data={data} current={current} period={period} open={openEditor} commit={commit} />}
-        {tab === 'recurring' && <RecurringPage data={data} open={openEditor} commit={commit} serverMode={serverMode} />}
-        {tab === 'reports' && <Reports data={data} current={current} categories={categories} trend={trend} period={period} />}
-        {tab === 'settings' && <SettingsPage data={data} dark={dark} setDark={setDark} commit={commit} serverMode={serverMode} onLogout={logout} />}
+        <div className="section-view" key={tab}>
+          {tab === 'dashboard' && <Dashboard data={data} current={current} categories={categories} trend={trend} period={period} open={openEditor} go={setTab} />}
+          {tab === 'transactions' && <Transactions data={data} entries={data.entries} open={openEditor} remove={deleteEntry} />}
+          {tab === 'wallets' && <Wallets data={data} open={openEditor} remove={deleteWallet} commit={commit} />}
+          {tab === 'investments' && <>
+            <PageHeading title="Investasi" eyebrow="SIMPANAN" description="Sisihkan dana dari dompet untuk tabungan atau tujuan keuangan Anda." action={<MotionButton className="button button-dark" onClick={() => openEditor({ kind: 'wallet', investment: true })}><Plus size={18} /> Buat simpanan</MotionButton>} />
+            <SavingsCards
+              data={data}
+              onCreate={() => openEditor({ kind: 'wallet', investment: true })}
+              onRename={item => openEditor({ kind: 'wallet', item, investment: true })}
+              onRemove={deleteWallet}
+              onTransfer={movement => openEditor({ kind: 'investment-transfer', ...movement })}
+              onAddWallet={() => openEditor({ kind: 'wallet' })}
+              onViewTransactions={() => setTab('transactions')}
+            />
+          </>}
+          {tab === 'budgets' && <Budgets data={data} current={current} period={period} open={openEditor} commit={commit} />}
+          {tab === 'recurring' && <RecurringPage data={data} open={openEditor} commit={commit} serverMode={serverMode} />}
+          {tab === 'reports' && <Reports data={data} current={current} categories={categories} trend={trend} period={period} />}
+          {tab === 'settings' && <SettingsPage data={data} dark={dark} setDark={setDark} commit={commit} serverMode={serverMode} onLogout={logout} />}
+        </div>
       </main>
     </div>
     <nav className="bottom-nav" aria-label="Navigasi bawah">{(['dashboard', 'transactions', 'budgets', 'investments', 'wallets'] as Tab[]).map((item, index) => { const n = nav.find(x => x.id === item)!; return <div className="bottom-slot" key={item}>{index === 2 && <MotionButton className="mobile-add" onClick={() => openEditor({ kind: 'transaction' })} aria-label="Catat transaksi"><Plus size={25} /></MotionButton>}<MotionButton className={tab === item ? 'selected' : ''} onClick={() => setTab(item)}><n.icon size={20} />{item === 'dashboard' ? 'Dasbor' : item === 'transactions' ? 'Transaksi' : item === 'budgets' ? 'Anggaran' : item === 'investments' ? 'Investasi' : 'Dompet'}</MotionButton></div>; })}</nav>
@@ -508,8 +511,8 @@ function Dashboard({ data, current, categories, trend, period, open, go }: {
               <XAxis dataKey="name" tickLine={false} axisLine={false} tick={{ fill: 'var(--muted)', fontSize: 11 }} />
               <YAxis tickLine={false} axisLine={false} tickFormatter={value => `${value / 1_000_000} jt`} width={38} tick={{ fill: 'var(--muted)', fontSize: 10 }} />
               <Tooltip content={<ChartTip />} cursor={{ fill: 'var(--hover)' }} />
-              <Bar dataKey="pemasukan" name="Pemasukan" fill="var(--chart-income)" radius={[5, 5, 0, 0]} maxBarSize={24} />
-              <Bar dataKey="pengeluaran" name="Pengeluaran" fill="var(--chart-expense)" radius={[5, 5, 0, 0]} maxBarSize={24} />
+              <Bar {...chartMotion} dataKey="pemasukan" name="Pemasukan" fill="var(--chart-income)" radius={[5, 5, 0, 0]} maxBarSize={24} />
+              <Bar {...chartMotion} dataKey="pengeluaran" name="Pengeluaran" fill="var(--chart-expense)" radius={[5, 5, 0, 0]} maxBarSize={24} />
             </BarChart>
           </ResponsiveContainer>
         </div>
@@ -593,7 +596,7 @@ function Reports({ data, current, categories, trend, period }: { data: FinanceDa
   const top = [...current.entries].filter(e => e.type === 'expense').sort((a, b) => b.amount - a.amount).slice(0, 5);
   const last = new Date(period.getFullYear(), period.getMonth() - 1, 1);
   const previous = metrics(data, last);
-  return <><PageHeading eyebrow="ANALITIK" title="Laporan Keuangan" description="Temukan pola dan buat keputusan yang lebih jelas." action={<><MotionButton className="button button-outline" onClick={() => downloadCsv(data, current.entries)}><Download size={17} /> CSV</MotionButton><MotionButton className="button button-outline" onClick={() => downloadXlsx(data, current.entries)}><Download size={17} /> Excel</MotionButton><MotionButton className="button button-dark" onClick={() => window.print()}><FileText size={17} /> Simpan PDF</MotionButton></>} /><div className="report-stats"><div className="card"><span>Rata-rata pemasukan 6 bulan</span><strong>{rupiah(Math.round(trend.reduce((a, b) => a + b.pemasukan, 0) / 6))}</strong></div><div className="card"><span>Rata-rata pengeluaran 6 bulan</span><strong>{rupiah(Math.round(trend.reduce((a, b) => a + b.pengeluaran, 0) / 6))}</strong></div><div className="card"><span>Rasio tabungan bulan ini</span><strong>{current.savingsRate}%</strong></div></div><div className="card chart-card report-chart"><SectionHeading title="Pergerakan Arus Kas" subtitle="Enam bulan terakhir" /><div className="report-area"><ResponsiveContainer width="100%" height="100%"><AreaChart data={trend}><defs><linearGradient id="incomeFill" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stopColor="var(--chart-income)" stopOpacity={.28} /><stop offset="100%" stopColor="var(--chart-income)" stopOpacity={0} /></linearGradient></defs><CartesianGrid vertical={false} stroke="var(--grid)" strokeDasharray="3 4" /><XAxis dataKey="name" axisLine={false} tickLine={false} tick={{ fill: 'var(--muted)', fontSize: 12 }} /><YAxis axisLine={false} tickLine={false} width={45} tickFormatter={value => `${value / 1_000_000} jt`} tick={{ fill: 'var(--muted)', fontSize: 11 }} /><Tooltip content={<ChartTip />} /><Area dataKey="pemasukan" name="Pemasukan" type="monotone" stroke="var(--chart-income)" fill="url(#incomeFill)" strokeWidth={3} /><Area dataKey="pengeluaran" name="Pengeluaran" type="monotone" stroke="var(--chart-expense)" fill="transparent" strokeWidth={2} /></AreaChart></ResponsiveContainer></div></div><div className="report-bottom"><div className="card padded-card"><SectionHeading title="Pengeluaran per Kategori" subtitle={`${monthLabel(period)} dibanding bulan sebelumnya`} /><div className="category-report-list">{categories.length ? categories.map(c => { const before = byCategory(data, last).find(x => x.name === c.name)?.value || 0; return <div key={c.name}><div className="category-report-name"><span><i style={{ background: categoryColors[c.name] || '#94a3b8' }} />{c.name}</span><strong>{rupiah(c.value)}</strong></div><div className="mini-bars"><span style={{ width: `${Math.min(100, c.value / Math.max(...categories.map(x => x.value), 1) * 100)}%`, background: categoryColors[c.name] || '#94a3b8' }} /><span className="last-month-bar" style={{ width: `${Math.min(100, before / Math.max(...categories.map(x => x.value), 1) * 100)}%` }} /></div></div>; }) : <Empty title="Belum ada data" detail="Catat pengeluaran untuk melihat analitik." />}</div><p className="small-note">Total bulan lalu: {rupiah(previous.expense)}</p></div><div className="card padded-card"><SectionHeading title="Pengeluaran Terbesar" subtitle={`Lima transaksi teratas ${monthLabel(period)}`} /><div className="top-spend-list">{top.map((entry, index) => <div key={entry.id}><span className="rank">{String(index + 1).padStart(2, '0')}</span><div><strong>{entry.title}</strong><small>{entry.category} · {dateLabel(entry.date)}</small></div><strong>{rupiah(entry.amount)}</strong></div>)}</div></div></div></>;
+  return <><PageHeading eyebrow="ANALITIK" title="Laporan Keuangan" description="Temukan pola dan buat keputusan yang lebih jelas." action={<><MotionButton className="button button-outline" onClick={() => downloadCsv(data, current.entries)}><Download size={17} /> CSV</MotionButton><MotionButton className="button button-outline" onClick={() => downloadXlsx(data, current.entries)}><Download size={17} /> Excel</MotionButton><MotionButton className="button button-dark" onClick={() => window.print()}><FileText size={17} /> Simpan PDF</MotionButton></>} /><div className="report-stats"><div className="card"><span>Rata-rata pemasukan 6 bulan</span><strong>{rupiah(Math.round(trend.reduce((a, b) => a + b.pemasukan, 0) / 6))}</strong></div><div className="card"><span>Rata-rata pengeluaran 6 bulan</span><strong>{rupiah(Math.round(trend.reduce((a, b) => a + b.pengeluaran, 0) / 6))}</strong></div><div className="card"><span>Rasio tabungan bulan ini</span><strong>{current.savingsRate}%</strong></div></div><div className="card chart-card report-chart"><SectionHeading title="Pergerakan Arus Kas" subtitle="Enam bulan terakhir" /><div className="report-area"><ResponsiveContainer width="100%" height="100%"><AreaChart data={trend}><defs><linearGradient id="incomeFill" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stopColor="var(--chart-income)" stopOpacity={.28} /><stop offset="100%" stopColor="var(--chart-income)" stopOpacity={0} /></linearGradient></defs><CartesianGrid vertical={false} stroke="var(--grid)" strokeDasharray="3 4" /><XAxis dataKey="name" axisLine={false} tickLine={false} tick={{ fill: 'var(--muted)', fontSize: 12 }} /><YAxis axisLine={false} tickLine={false} width={45} tickFormatter={value => `${value / 1_000_000} jt`} tick={{ fill: 'var(--muted)', fontSize: 11 }} /><Tooltip content={<ChartTip />} /><Area {...chartMotion} dataKey="pemasukan" name="Pemasukan" type="monotone" stroke="var(--chart-income)" fill="url(#incomeFill)" strokeWidth={3} /><Area {...chartMotion} dataKey="pengeluaran" name="Pengeluaran" type="monotone" stroke="var(--chart-expense)" fill="transparent" strokeWidth={2} /></AreaChart></ResponsiveContainer></div></div><div className="report-bottom"><div className="card padded-card"><SectionHeading title="Pengeluaran per Kategori" subtitle={`${monthLabel(period)} dibanding bulan sebelumnya`} /><div className="category-report-list">{categories.length ? categories.map(c => { const before = byCategory(data, last).find(x => x.name === c.name)?.value || 0; return <div key={c.name}><div className="category-report-name"><span><i style={{ background: categoryColors[c.name] || '#94a3b8' }} />{c.name}</span><strong>{rupiah(c.value)}</strong></div><div className="mini-bars"><span style={{ width: `${Math.min(100, c.value / Math.max(...categories.map(x => x.value), 1) * 100)}%`, background: categoryColors[c.name] || '#94a3b8' }} /><span className="last-month-bar" style={{ width: `${Math.min(100, before / Math.max(...categories.map(x => x.value), 1) * 100)}%` }} /></div></div>; }) : <Empty title="Belum ada data" detail="Catat pengeluaran untuk melihat analitik." />}</div><p className="small-note">Total bulan lalu: {rupiah(previous.expense)}</p></div><div className="card padded-card"><SectionHeading title="Pengeluaran Terbesar" subtitle={`Lima transaksi teratas ${monthLabel(period)}`} /><div className="top-spend-list">{top.map((entry, index) => <div key={entry.id}><span className="rank">{String(index + 1).padStart(2, '0')}</span><div><strong>{entry.title}</strong><small>{entry.category} · {dateLabel(entry.date)}</small></div><strong>{rupiah(entry.amount)}</strong></div>)}</div></div></div></>;
 }
 
 function SettingsPage({ data, dark, setDark, commit, serverMode, onLogout }: { data: FinanceData; dark: boolean; setDark: (next: boolean) => void; commit: (next: FinanceData, message: string) => void; serverMode: boolean; onLogout: () => void }) {

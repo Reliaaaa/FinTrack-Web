@@ -300,9 +300,29 @@
 }
 .password-toggle:hover { background: var(--green-soft); }
 
-.header-logout { background: #b91c1c; color: #fff; border-color: #b91c1c; }
-.header-logout:hover { background: #991b1b; border-color: #991b1b; }
+.header-logout, .logout-confirm-button { background: #b91c1c; color: #fff; border-color: #b91c1c; }
+.header-logout:hover, .logout-confirm-button:hover { background: #991b1b; border-color: #991b1b; }
 .header-logout svg { flex: none; }
+
+.logout-dialog {
+  width: min(400px, calc(100% - 32px));
+  padding: var(--space-6);
+  border: 1px solid var(--line);
+  border-radius: var(--radius-panel);
+  background: var(--surface);
+  color: var(--ink);
+  box-shadow: var(--shadow);
+}
+.logout-dialog::backdrop { background: #02061799; }
+.logout-dialog h2 { margin-bottom: var(--space-2); font-size: 1.25rem; }
+.logout-dialog > p:not(.form-error) { color: var(--muted); }
+.logout-dialog-actions {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: var(--space-2);
+}
+.logout-dialog-actions .button { min-height: 44px; }
 
 .savings-empty {
   display: grid;

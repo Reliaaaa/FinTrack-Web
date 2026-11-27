@@ -13,7 +13,7 @@ async function expectIndicatorAt(indicator: Locator, control: Locator) {
   }).toBeLessThan(1.5);
 }
 
-test('dock mengambang menunjukkan halaman aktif dan menganimasikan tombol', async ({ page }) => {
+test('penanda dock mengikuti halaman aktif dengan label dan ikon tetap diam', async ({ page }) => {
   await page.emulateMedia({ reducedMotion: 'no-preference' });
   await page.goto('/');
   const dock = page.getByRole('navigation', { name: 'Navigasi utama' });
@@ -27,11 +27,11 @@ test('dock mengambang menunjukkan halaman aktif dan menganimasikan tombol', asyn
 
   await reports.hover();
   const letter = reports.locator('.roll-letter').first();
-  await expect.poll(() => letter.evaluate(element => getComputedStyle(element).transform)).not.toBe('none');
+  await expect(letter).toHaveCSS('transform', 'none');
   await expect(dashboard).toHaveAttribute('aria-current', 'page');
 
   await page.mouse.down();
-  await expect.poll(() => reports.evaluate(element => getComputedStyle(element).scale)).toBe('0.96');
+  await expect(reports).toHaveCSS('scale', 'none');
   await page.mouse.up();
   await expect(page).toHaveURL(/\/reports$/);
   await expect(reports).toHaveAttribute('aria-current', 'page');

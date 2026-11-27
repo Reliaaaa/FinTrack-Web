@@ -92,6 +92,44 @@ test('sumbu arus kas memakai ribuan pada dasbor dan laporan', async ({ page }) =
   await expect(reportAxis.getByText(/\bjt$/)).toHaveCount(0);
 });
 
+test('animasi transaksi menyesuaikan layar dan pengaturan Kurangi Gerakan', async ({ page }) => {
+  await page.setViewportSize({ width: 375, height: 844 });
+  await page.goto('/transactions');
+  const dock = page.getByRole('navigation', { name: 'Navigasi utama' });
+  const indicator = dock.locator('.dock-indicator');
+  const create = dock.getByRole('button', { name: 'Catat Transaksi' });
+  const dialog = page.getByRole('dialog', { name: 'Catat Transaksi Baru' });
+  const submit = dialog.getByRole('button', { name: 'Simpan Transaksi' });
+  const toast = page.getByRole('status').filter({ hasText: 'Transaksi tersimpan' });
+
+  await expect(indicator).toHaveCSS('transition-duration', '0.22s, 0.22s');
+  await expect(create).toHaveCSS('--button-press-duration', '100ms');
+  await create.hover();
+  await page.mouse.down();
+  await expect(create).toHaveCSS('scale', '0.98');
+  await page.mouse.up();
+  await expect(dialog).toHaveCSS('animation-name', 'transaction-enter');
+  await expect(dialog).toHaveCSS('animation-duration', '0.18s');
+  await expect(submit).toHaveCSS('--button-press-duration', '100ms');
+
+  await page.setViewportSize({ width: 1440, height: 900 });
+  await expect(dialog).toHaveCSS('animation-name', 'fade-in');
+
+  await dialog.getByLabel('Judul transaksi').fill('Animasi QA');
+  await dialog.getByLabel('Nominal rupiah').fill('15000');
+  await submit.click();
+  await expect(dialog).toBeHidden();
+  await expect(toast).toHaveCount(1);
+  await expect(toast).toHaveCSS('animation-name', 'toast-enter');
+
+  await page.emulateMedia({ reducedMotion: 'reduce' });
+  await expect(indicator).toHaveCSS('transition-property', 'none');
+  await expect(toast).toHaveCSS('animation-name', 'none');
+  await create.click();
+  await expect(dialog).toHaveCSS('animation-name', 'none');
+  await expect(submit).toHaveCSS('transition-property', 'none');
+});
+
 test('transaksi demo bertahan setelah reload dan bisa dihapus', async ({ page }) => {
   await page.goto('/transactions');
   await page.getByRole('main').getByRole('button', { name: 'Catat Transaksi', exact: true }).click();

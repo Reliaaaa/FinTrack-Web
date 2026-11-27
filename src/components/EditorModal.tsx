@@ -6,6 +6,7 @@ type EditorModalProps = {
   title: string;
   eyebrow?: string;
   submitLabel: string;
+  isTransaction?: boolean;
   saving: boolean;
   error: string;
   onClose: () => void;
@@ -13,7 +14,7 @@ type EditorModalProps = {
   children: ReactNode;
 };
 
-export function EditorModal({ title, eyebrow, submitLabel, saving, error, onClose, onSubmit, children }: EditorModalProps) {
+export function EditorModal({ title, eyebrow, submitLabel, isTransaction, saving, error, onClose, onSubmit, children }: EditorModalProps) {
   const titleId = useId();
   const dialogRef = useRef<HTMLDivElement>(null);
   const closeRef = useRef(onClose);
@@ -43,7 +44,7 @@ export function EditorModal({ title, eyebrow, submitLabel, saving, error, onClos
     return () => document.removeEventListener('keydown', handleKey);
   }, []);
 
-  return <div className="modal-backdrop" onMouseDown={event => { if (event.target === event.currentTarget) onClose(); }}>
+  return <div className="modal-backdrop" data-transaction-editor={isTransaction || undefined} onMouseDown={event => { if (event.target === event.currentTarget) onClose(); }}>
     <div ref={dialogRef} className="modal" role="dialog" aria-modal="true" aria-labelledby={titleId}>
       <div className="modal-head">
         <div>{eyebrow && <span className="eyebrow">{eyebrow}</span>}<h2 id={titleId}>{title}</h2></div>

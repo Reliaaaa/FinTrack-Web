@@ -117,7 +117,7 @@ export function FloatingDock<T extends string>({ items, active, onSelect, onCrea
           </a>
         </div>
       </details>
-      <MotionButton type="button" className="dock-create" aria-label="Catat Transaksi" onClick={onCreate}>
+      <MotionButton type="button" className="dock-create transaction-action" aria-label="Catat Transaksi" onClick={onCreate}>
         <Plus size={23} aria-hidden="true" />
         Tambah
       </MotionButton>

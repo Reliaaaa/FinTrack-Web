@@ -31,7 +31,6 @@ const nav: DockItem<Tab>[] = [
 const today = () => { const date = new Date(); return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`; };
 const id = () => crypto.randomUUID();
 const money = (value: string) => Number(value.replace(/[^\d]/g, '')) || 0;
-const chartMotion = { isAnimationActive: 'auto', animationDuration: 420, animationEasing: 'ease-out' } as const;
 const demoKey = 'fintrack-demo-v1';
 const localModeKey = 'fintrack-local-mode';
 const sessionChangeKey = 'fintrack-session-change';
@@ -70,7 +69,11 @@ export default function FinanceApp({ startOnLogin = false }: { startOnLogin?: bo
   const [dark, setDark] = useState(false);
   const [editor, setEditor] = useState<Editor>(null);
   const editorOpener = useRef<HTMLElement | null>(null);
-  const [toast, setToast] = useState('');
+  const [toast, setToast] = useState<{ message: string; id: number; transactionSaved: boolean } | null>(null);
+
+  const showToast = (message: string, transactionSaved = false) => {
+    setToast(previous => ({ message, id: (previous?.id ?? 0) + 1, transactionSaved }));
+  };
 
   const restoreAccount = useCallback((snapshot: AccountSnapshot) => {
     try { sessionStorage.removeItem(localModeKey); } catch { /* use the account session */ }
@@ -109,7 +112,7 @@ export default function FinanceApp({ startOnLogin = false }: { startOnLogin?: bo
     setAuthNotice(notice);
     setAuthRequired(true);
     setCheckingSession(false);
-    setToast('');
+    setToast(null);
   }, []);
 
   useEffect(() => {
@@ -203,7 +206,7 @@ export default function FinanceApp({ startOnLogin = false }: { startOnLogin?: bo
     document.documentElement.dataset.theme = dark ? 'dark' : 'light';
     try { if (ready) localStorage.setItem('fintrack-theme', dark ? 'dark' : 'light'); } catch { /* the current theme still applies */ }
   }, [dark, ready]);
-  useEffect(() => { if (!toast) return; const timer = setTimeout(() => setToast(''), 3500); return () => clearTimeout(timer); }, [toast]);
+  useEffect(() => { if (!toast) return; const timer = setTimeout(() => setToast(null), 3500); return () => clearTimeout(timer); }, [toast]);
   const setTab = (next: Tab) => {
     setTabState(next);
     history.pushState(null, '', next === 'dashboard' ? '/' : `/${next}`);
@@ -212,7 +215,7 @@ export default function FinanceApp({ startOnLogin = false }: { startOnLogin?: bo
   const openEditor = (next: Editor) => {
     editorOpener.current = document.activeElement as HTMLElement;
     if ((next?.kind === 'transaction' || next?.kind === 'recurring') && !next.item && !data.wallets.some(wallet => !wallet.archived && wallet.type !== 'investment')) {
-      setToast('Tambahkan dompet aktif terlebih dahulu.');
+      showToast('Tambahkan dompet aktif terlebih dahulu.');
       setEditor({ kind: 'wallet' });
       return;
     }
@@ -226,9 +229,9 @@ export default function FinanceApp({ startOnLogin = false }: { startOnLogin?: bo
     setEditor(next);
   };
   const closeEditor = () => { setEditor(null); requestAnimationFrame(() => editorOpener.current?.focus()); };
-  const commit = async (next: FinanceData, message: string) => {
-    if (serverMode && conflict) { setToast('Selesaikan konflik data sebelum menyimpan lagi.'); return false; }
-    if (savingRef.current) { setToast('Tunggu hingga perubahan sebelumnya selesai disimpan.'); return false; }
+  const commit = async (next: FinanceData, message: string, transactionSaved = false) => {
+    if (serverMode && conflict) { showToast('Selesaikan konflik data sebelum menyimpan lagi.'); return false; }
+    if (savingRef.current) { showToast('Tunggu hingga perubahan sebelumnya selesai disimpan.'); return false; }
     const previous = data;
     setData(next);
     if (serverMode) {
@@ -245,7 +248,7 @@ export default function FinanceApp({ startOnLogin = false }: { startOnLogin?: bo
           sessionStorage.setItem(draftKey(accountId), JSON.stringify(next));
           if (accountId !== accountRef.current) return false;
           setConflict(true);
-          setToast('Perubahan di perangkat lain terdeteksi. Draf lokal tetap tersimpan.');
+          showToast('Perubahan di perangkat lain terdeteksi. Draf lokal tetap tersimpan.');
           return true;
         }
         if (accountId !== accountRef.current) return false;
@@ -256,16 +259,16 @@ export default function FinanceApp({ startOnLogin = false }: { startOnLogin?: bo
       } catch (error) {
         if (accountId === accountRef.current) {
           setData(previous);
-          setToast(error instanceof Error ? error.message : 'Gagal menyimpan');
+          showToast(error instanceof Error ? error.message : 'Gagal menyimpan');
         }
         return false;
       }
       finally { savingRef.current = false; setSaving(false); }
     } else {
       try { localStorage.setItem(demoKey, JSON.stringify(next)); }
-      catch { setData(previous); setToast('Penyimpanan browser penuh. Ekspor data dan hapus struk lama.'); return false; }
+      catch { setData(previous); showToast('Penyimpanan browser penuh. Ekspor data dan hapus struk lama.'); return false; }
     }
-    setToast(message);
+    showToast(message, transactionSaved);
     return true;
   };
   const saveConflictDraft = () => download(new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' }), 'fintrack-draf-konflik.json');
@@ -288,8 +291,8 @@ export default function FinanceApp({ startOnLogin = false }: { startOnLogin?: bo
       if (!body.data || !body.version) throw new Error('Respons server tidak lengkap');
       setData(body.data); versionRef.current = body.version; setConflict(false);
       sessionStorage.removeItem(draftKey(accountId));
-      setToast('Data server terbaru dimuat. Draf lokal sudah diunduh.');
-    } catch (error) { setToast(error instanceof Error ? error.message : 'Gagal memuat data'); }
+      showToast('Data server terbaru dimuat. Draf lokal sudah diunduh.');
+    } catch (error) { showToast(error instanceof Error ? error.message : 'Gagal memuat data'); }
   };
   const current = useMemo(() => metrics(data, period), [data, period]);
   const categories = useMemo(() => byCategory(data, period), [data, period]);
@@ -310,18 +313,18 @@ export default function FinanceApp({ startOnLogin = false }: { startOnLogin?: bo
     setServiceIssue('');
   };
   const logout = async () => {
-    if (savingRef.current) { setToast('Tunggu hingga perubahan selesai disimpan.'); return; }
+    if (savingRef.current) { showToast('Tunggu hingga perubahan selesai disimpan.'); return; }
     try {
       const response = await fetch('/api/v1/auth/logout', { method: 'POST' });
       if (!response.ok) throw new Error('Gagal keluar. Coba lagi.');
       hideAccount();
       signalSessionChange();
-    } catch { setToast('Gagal keluar. Coba lagi.'); }
+    } catch { showToast('Gagal keluar. Coba lagi.'); }
   };
   const deleteEntry = (entry: Entry) => {
     const movement = investmentMovement(data.wallets, entry);
     if (movement && entry.targetWalletId && walletBalance(data, entry.targetWalletId, entry.id) < 0) {
-      setToast('Saldo tujuan tidak cukup untuk membatalkan transfer ini.');
+      showToast('Saldo tujuan tidak cukup untuk membatalkan transfer ini.');
       return;
     }
     if (confirm(`Hapus transaksi “${entry.title}”?`)) {
@@ -331,7 +334,7 @@ export default function FinanceApp({ startOnLogin = false }: { startOnLogin?: bo
   const deleteWallet = (wallet: Wallet) => {
     const label = wallet.type === 'investment' ? 'Simpanan' : 'Dompet';
     if (data.entries.some(e => e.walletId === wallet.id || e.targetWalletId === wallet.id) || data.recurring.some(r => r.walletId === wallet.id)) {
-      setToast(wallet.type === 'investment' ? 'Simpanan masih memiliki riwayat transfer.' : 'Dompet masih dipakai transaksi atau jadwal. Arsipkan saja.');
+      showToast(wallet.type === 'investment' ? 'Simpanan masih memiliki riwayat transfer.' : 'Dompet masih dipakai transaksi atau jadwal. Arsipkan saja.');
       return;
     }
     if (confirm(`Hapus ${label.toLowerCase()} “${wallet.name}”?`)) {
@@ -344,7 +347,7 @@ export default function FinanceApp({ startOnLogin = false }: { startOnLogin?: bo
     if (editor.kind === 'transaction' || editor.kind === 'investment-transfer') {
       const next = item as Entry;
       const message = editor.kind === 'transaction' ? 'Transaksi tersimpan' : editor.direction === 'deposit' ? 'Setoran tersimpan' : 'Penarikan tersimpan';
-      saved = await commit({ ...data, entries: editor.item ? data.entries.map(e => e.id === next.id ? next : e) : [next, ...data.entries] }, message);
+      saved = await commit({ ...data, entries: editor.item ? data.entries.map(e => e.id === next.id ? next : e) : [next, ...data.entries] }, message, editor.kind === 'transaction');
     } else if (editor.kind === 'wallet') {
       const next = item as Wallet;
       saved = await commit({ ...data, wallets: editor.item ? data.wallets.map(w => w.id === next.id ? next : w) : [...data.wallets, next] }, next.type === 'investment' ? 'Simpanan tersimpan' : 'Dompet tersimpan');
@@ -396,7 +399,7 @@ export default function FinanceApp({ startOnLogin = false }: { startOnLogin?: bo
           </>}
           {tab === 'budgets' && <Budgets data={data} current={current} period={period} open={openEditor} commit={commit} />}
           {tab === 'recurring' && <RecurringPage data={data} open={openEditor} commit={commit} serverMode={serverMode} />}
-          {tab === 'reports' && <Reports data={data} current={current} categories={categories} trend={trend} period={period} onExportError={() => setToast('Gagal menyiapkan file Excel. Coba lagi.')} />}
+          {tab === 'reports' && <Reports data={data} current={current} categories={categories} trend={trend} period={period} onExportError={() => showToast('Gagal menyiapkan file Excel. Coba lagi.')} />}
           {tab === 'settings' && <SettingsPage data={data} dark={dark} setDark={setDark} commit={commit} serverMode={serverMode} onLogout={logout} />}
         </div>
       </main>
@@ -405,7 +408,7 @@ export default function FinanceApp({ startOnLogin = false }: { startOnLogin?: bo
     {editor?.kind === 'investment-transfer'
       ? <InvestmentTransferDialog movement={editor} entry={editor.item} data={data} initialDate={today()} saving={saving} onClose={closeEditor} onSave={saveEditor} />
       : editor && <EditorDialog editor={editor} data={data} period={period} saving={saving} onClose={closeEditor} onSave={saveEditor} />}
-    {toast && <div className="toast" role="status"><Check size={17} />{toast}<MotionButton onClick={() => setToast('')} aria-label="Tutup notifikasi"><X size={15} /></MotionButton></div>}
+    {toast && <div key={toast.id} className="toast" role="status" data-transaction-saved={toast.transactionSaved || undefined}><Check size={17} />{toast.message}<MotionButton onClick={() => setToast(null)} aria-label="Tutup notifikasi"><X size={15} /></MotionButton></div>}
   </div>
   {!checkingSession && (tab === 'dashboard' || tab === 'reports') && (
     <PrintReport data={data} entries={current.entries} period={period} />
@@ -512,8 +515,8 @@ function Dashboard({ data, current, categories, trend, period, open, go }: {
               <XAxis dataKey="name" tickLine={false} axisLine={false} tick={{ fill: 'var(--muted)', fontSize: 11 }} />
               <YAxis tickLine={false} axisLine={false} tickFormatter={rupiahAxisTick} width="auto" tick={{ fill: 'var(--muted)', fontSize: 10 }} />
               <Tooltip content={<ChartTip />} cursor={{ fill: 'var(--hover)' }} />
-              <Bar {...chartMotion} dataKey="pemasukan" name="Pemasukan" fill="var(--chart-income)" radius={[5, 5, 0, 0]} maxBarSize={24} />
-              <Bar {...chartMotion} dataKey="pengeluaran" name="Pengeluaran" fill="var(--chart-expense)" radius={[5, 5, 0, 0]} maxBarSize={24} />
+              <Bar isAnimationActive={false} dataKey="pemasukan" name="Pemasukan" fill="var(--chart-income)" radius={[5, 5, 0, 0]} maxBarSize={24} />
+              <Bar isAnimationActive={false} dataKey="pengeluaran" name="Pengeluaran" fill="var(--chart-expense)" radius={[5, 5, 0, 0]} maxBarSize={24} />
             </BarChart>
           </ResponsiveContainer>
         </div>
@@ -575,7 +578,7 @@ function Transactions({ data, entries, open, remove }: {
   const filtered = [...entries].filter(e => (type === 'all' || e.type === type) && (wallet === 'all' || e.walletId === wallet || (e.type === 'transfer' && e.targetWalletId === wallet)) && (categoryFilter === 'all' || e.category === categoryFilter) && (!startDate || e.date >= startDate) && (!endDate || e.date <= endDate) && `${e.title} ${e.category} ${e.note || ''} ${e.amount}`.toLowerCase().includes(searchTerm)).sort((a, b) => b.date.localeCompare(a.date));
   const pages = Math.max(1, Math.ceil(filtered.length / 10));
   const visible = filtered.slice((Math.min(page, pages) - 1) * 10, Math.min(page, pages) * 10);
-  return <><PageHeading eyebrow="BUKU BESAR" title="Semua Transaksi" description="Cari, saring, dan kelola setiap pergerakan uang Anda." action={<MotionButton className="button button-dark" onClick={() => open({ kind: 'transaction' })}><Plus size={18} /> Catat Transaksi</MotionButton>} /><div className="card filter-card"><div className="field-search"><Search size={18} /><input aria-label="Cari transaksi" placeholder="Cari transaksi, kategori, nominal..." value={query} onChange={e => { setQuery(e.target.value); setPage(1); }} /></div><div className="filter-controls"><label className="select-wrap"><WalletIcon size={16} /><select aria-label="Filter dompet" value={wallet} onChange={e => { setWallet(e.target.value); setPage(1); }}><option value="all">Semua dompet</option>{data.wallets.map(w => <option value={w.id} key={w.id}>{w.name}</option>)}</select><ChevronDown size={14} /></label><label className="select-wrap"><Filter size={16} /><select aria-label="Filter tipe" value={type} onChange={e => { setType(e.target.value); setPage(1); }}><option value="all">Semua tipe</option><option value="income">Pemasukan</option><option value="expense">Pengeluaran</option><option value="transfer">Transfer</option></select><ChevronDown size={14} /></label><MotionButton className="button button-outline" onClick={() => downloadCsv(data, filtered)}><Download size={16} /> CSV</MotionButton></div></div><div className="filter-extra"><label>Kategori<select aria-label="Filter kategori" value={categoryFilter} onChange={e => { setCategoryFilter(e.target.value); setPage(1); }}><option value="all">Semua kategori</option>{[...new Set(entries.map(e => e.category))].sort().map(c => <option key={c}>{c}</option>)}</select></label><label>Dari tanggal<input aria-label="Dari tanggal" type="date" value={startDate} max={endDate || undefined} onChange={e => { setStartDate(e.target.value); setPage(1); }} /></label><label>Sampai tanggal<input aria-label="Sampai tanggal" type="date" value={endDate} min={startDate || undefined} onChange={e => { setEndDate(e.target.value); setPage(1); }} /></label></div><div className="card table-card"><div className="table-top"><div><h2>Riwayat Transaksi</h2><p>{filtered.length} transaksi ditemukan</p></div><span className="subtle-badge">Terbaru dulu</span></div>{visible.length ? <><div className="table-scroll"><table><thead><tr><th>TANGGAL</th><th>TRANSAKSI</th><th>KATEGORI</th><th>DOMPET</th><th className="align-right">NOMINAL</th><th className="align-right">AKSI</th></tr></thead><tbody>{visible.map(entry => <tr key={entry.id}><td className="muted-cell">{dateLabel(entry.date)}</td><td><div className="table-title"><EntrySymbol type={entry.type} /><span><strong>{entry.title}</strong><small>{entry.note || (entry.type === 'transfer' ? `Ke ${data.wallets.find(w => w.id === entry.targetWalletId)?.name || 'dompet lain'}` : entry.type === 'income' ? 'Pemasukan' : 'Pengeluaran')}</small></span></div></td><td><span className="category-badge"><i style={{ background: categoryColors[entry.category] || '#94a3b8' }} />{entry.category}</span></td><td className="muted-cell">{data.wallets.find(w => w.id === entry.walletId)?.name || 'Dompet dihapus'}</td><td className={`align-right amount ${entry.type}`}>{entry.type === 'expense' ? '-' : entry.type === 'income' ? '+' : ''}{rupiah(entry.amount)}</td><td className="align-right"><MotionButton className="row-action" onClick={() => open({ kind: 'transaction', item: entry })} aria-label={`Ubah ${entry.title}`}>Ubah</MotionButton><MotionButton className="row-action delete" onClick={() => remove(entry)} aria-label={`Hapus ${entry.title}`}><Trash2 size={16} /></MotionButton></td></tr>)}</tbody></table></div><div className="table-bottom"><span>Menampilkan {visible.length} dari {filtered.length} transaksi</span><div><MotionButton disabled={page <= 1} onClick={() => setPage(page - 1)}>Sebelumnya</MotionButton><span>{Math.min(page, pages)} / {pages}</span><MotionButton disabled={page >= pages} onClick={() => setPage(page + 1)}>Berikutnya</MotionButton></div></div></> : <Empty title="Tidak ada transaksi" detail="Coba ubah filter atau catat transaksi baru." action={<MotionButton className="button button-dark" onClick={() => open({ kind: 'transaction' })}>Catat transaksi</MotionButton>} />}</div></>;
+  return <><PageHeading eyebrow="BUKU BESAR" title="Semua Transaksi" description="Cari, saring, dan kelola setiap pergerakan uang Anda." action={<MotionButton className="button button-dark transaction-action" onClick={() => open({ kind: 'transaction' })}><Plus size={18} /> Catat Transaksi</MotionButton>} /><div className="card filter-card"><div className="field-search"><Search size={18} /><input aria-label="Cari transaksi" placeholder="Cari transaksi, kategori, nominal..." value={query} onChange={e => { setQuery(e.target.value); setPage(1); }} /></div><div className="filter-controls"><label className="select-wrap"><WalletIcon size={16} /><select aria-label="Filter dompet" value={wallet} onChange={e => { setWallet(e.target.value); setPage(1); }}><option value="all">Semua dompet</option>{data.wallets.map(w => <option value={w.id} key={w.id}>{w.name}</option>)}</select><ChevronDown size={14} /></label><label className="select-wrap"><Filter size={16} /><select aria-label="Filter tipe" value={type} onChange={e => { setType(e.target.value); setPage(1); }}><option value="all">Semua tipe</option><option value="income">Pemasukan</option><option value="expense">Pengeluaran</option><option value="transfer">Transfer</option></select><ChevronDown size={14} /></label><MotionButton className="button button-outline" onClick={() => downloadCsv(data, filtered)}><Download size={16} /> CSV</MotionButton></div></div><div className="filter-extra"><label>Kategori<select aria-label="Filter kategori" value={categoryFilter} onChange={e => { setCategoryFilter(e.target.value); setPage(1); }}><option value="all">Semua kategori</option>{[...new Set(entries.map(e => e.category))].sort().map(c => <option key={c}>{c}</option>)}</select></label><label>Dari tanggal<input aria-label="Dari tanggal" type="date" value={startDate} max={endDate || undefined} onChange={e => { setStartDate(e.target.value); setPage(1); }} /></label><label>Sampai tanggal<input aria-label="Sampai tanggal" type="date" value={endDate} min={startDate || undefined} onChange={e => { setEndDate(e.target.value); setPage(1); }} /></label></div><div className="card table-card"><div className="table-top"><div><h2>Riwayat Transaksi</h2><p>{filtered.length} transaksi ditemukan</p></div><span className="subtle-badge">Terbaru dulu</span></div>{visible.length ? <><div className="table-scroll"><table><thead><tr><th>TANGGAL</th><th>TRANSAKSI</th><th>KATEGORI</th><th>DOMPET</th><th className="align-right">NOMINAL</th><th className="align-right">AKSI</th></tr></thead><tbody>{visible.map(entry => <tr key={entry.id}><td className="muted-cell">{dateLabel(entry.date)}</td><td><div className="table-title"><EntrySymbol type={entry.type} /><span><strong>{entry.title}</strong><small>{entry.note || (entry.type === 'transfer' ? `Ke ${data.wallets.find(w => w.id === entry.targetWalletId)?.name || 'dompet lain'}` : entry.type === 'income' ? 'Pemasukan' : 'Pengeluaran')}</small></span></div></td><td><span className="category-badge"><i style={{ background: categoryColors[entry.category] || '#94a3b8' }} />{entry.category}</span></td><td className="muted-cell">{data.wallets.find(w => w.id === entry.walletId)?.name || 'Dompet dihapus'}</td><td className={`align-right amount ${entry.type}`}>{entry.type === 'expense' ? '-' : entry.type === 'income' ? '+' : ''}{rupiah(entry.amount)}</td><td className="align-right"><MotionButton className="row-action" onClick={() => open({ kind: 'transaction', item: entry })} aria-label={`Ubah ${entry.title}`}>Ubah</MotionButton><MotionButton className="row-action delete" onClick={() => remove(entry)} aria-label={`Hapus ${entry.title}`}><Trash2 size={16} /></MotionButton></td></tr>)}</tbody></table></div><div className="table-bottom"><span>Menampilkan {visible.length} dari {filtered.length} transaksi</span><div><MotionButton disabled={page <= 1} onClick={() => setPage(page - 1)}>Sebelumnya</MotionButton><span>{Math.min(page, pages)} / {pages}</span><MotionButton disabled={page >= pages} onClick={() => setPage(page + 1)}>Berikutnya</MotionButton></div></div></> : <Empty title="Tidak ada transaksi" detail="Coba ubah filter atau catat transaksi baru." action={<MotionButton className="button button-dark transaction-action" onClick={() => open({ kind: 'transaction' })}>Catat transaksi</MotionButton>} />}</div></>;
 }
 
 function Wallets({ data, open, remove, commit }: { data: FinanceData; open: (editor: Editor) => void; remove: (wallet: Wallet) => void; commit: (next: FinanceData, message: string) => void }) {
@@ -603,7 +606,7 @@ function Reports({ data, current, categories, trend, period, onExportError }: { 
   const top = [...current.entries].filter(e => e.type === 'expense').sort((a, b) => b.amount - a.amount).slice(0, 5);
   const last = new Date(period.getFullYear(), period.getMonth() - 1, 1);
   const previous = metrics(data, last);
-  return <><PageHeading eyebrow="ANALITIK" title="Laporan Keuangan" description="Temukan pola dan buat keputusan yang lebih jelas." action={<><MotionButton className="button button-outline" onClick={() => downloadCsv(data, current.entries, period)}><Download size={17} /> CSV</MotionButton><MotionButton className="button button-outline" onClick={() => { void downloadXlsx(data, current.entries, period).catch(onExportError); }}><Download size={17} /> Excel</MotionButton><MotionButton className="button button-dark" onClick={() => window.print()}><FileText size={17} /> Simpan PDF</MotionButton></>} /><div className="report-stats"><div className="card"><span>Rata-rata pemasukan 6 bulan</span><strong>{rupiah(Math.round(trend.reduce((a, b) => a + b.pemasukan, 0) / 6))}</strong></div><div className="card"><span>Rata-rata pengeluaran 6 bulan</span><strong>{rupiah(Math.round(trend.reduce((a, b) => a + b.pengeluaran, 0) / 6))}</strong></div><div className="card"><span>Rasio tabungan bulan ini</span><strong>{current.savingsRate}%</strong></div></div><div className="card chart-card report-chart"><SectionHeading title="Pergerakan Arus Kas" subtitle="Enam bulan terakhir" /><div className="report-area"><ResponsiveContainer width="100%" height="100%"><AreaChart data={trend}><defs><linearGradient id="incomeFill" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stopColor="var(--chart-income)" stopOpacity={.28} /><stop offset="100%" stopColor="var(--chart-income)" stopOpacity={0} /></linearGradient></defs><CartesianGrid vertical={false} stroke="var(--grid)" strokeDasharray="3 4" /><XAxis dataKey="name" axisLine={false} tickLine={false} tick={{ fill: 'var(--muted)', fontSize: 12 }} /><YAxis axisLine={false} tickLine={false} width="auto" tickFormatter={rupiahAxisTick} tick={{ fill: 'var(--muted)', fontSize: 11 }} /><Tooltip content={<ChartTip />} /><Area {...chartMotion} dataKey="pemasukan" name="Pemasukan" type="monotone" stroke="var(--chart-income)" fill="url(#incomeFill)" strokeWidth={3} /><Area {...chartMotion} dataKey="pengeluaran" name="Pengeluaran" type="monotone" stroke="var(--chart-expense)" fill="transparent" strokeWidth={2} /></AreaChart></ResponsiveContainer></div></div><div className="report-bottom"><div className="card padded-card"><SectionHeading title="Pengeluaran per Kategori" subtitle={`${monthLabel(period)} dibanding bulan sebelumnya`} /><div className="category-report-list">{categories.length ? categories.map(c => { const before = byCategory(data, last).find(x => x.name === c.name)?.value || 0; return <div key={c.name}><div className="category-report-name"><span><i style={{ background: categoryColors[c.name] || '#94a3b8' }} />{c.name}</span><strong>{rupiah(c.value)}</strong></div><div className="mini-bars"><span style={{ width: `${Math.min(100, c.value / Math.max(...categories.map(x => x.value), 1) * 100)}%`, background: categoryColors[c.name] || '#94a3b8' }} /><span className="last-month-bar" style={{ width: `${Math.min(100, before / Math.max(...categories.map(x => x.value), 1) * 100)}%` }} /></div></div>; }) : <Empty title="Belum ada data" detail="Catat pengeluaran untuk melihat analitik." />}</div><p className="small-note">Total bulan lalu: {rupiah(previous.expense)}</p></div><div className="card padded-card"><SectionHeading title="Pengeluaran Terbesar" subtitle={`Lima transaksi teratas ${monthLabel(period)}`} /><div className="top-spend-list">{top.map((entry, index) => <div key={entry.id}><span className="rank">{String(index + 1).padStart(2, '0')}</span><div><strong>{entry.title}</strong><small>{entry.category} · {dateLabel(entry.date)}</small></div><strong>{rupiah(entry.amount)}</strong></div>)}</div></div></div></>;
+  return <><PageHeading eyebrow="ANALITIK" title="Laporan Keuangan" description="Temukan pola dan buat keputusan yang lebih jelas." action={<><MotionButton className="button button-outline" onClick={() => downloadCsv(data, current.entries, period)}><Download size={17} /> CSV</MotionButton><MotionButton className="button button-outline" onClick={() => { void downloadXlsx(data, current.entries, period).catch(onExportError); }}><Download size={17} /> Excel</MotionButton><MotionButton className="button button-dark" onClick={() => window.print()}><FileText size={17} /> Simpan PDF</MotionButton></>} /><div className="report-stats"><div className="card"><span>Rata-rata pemasukan 6 bulan</span><strong>{rupiah(Math.round(trend.reduce((a, b) => a + b.pemasukan, 0) / 6))}</strong></div><div className="card"><span>Rata-rata pengeluaran 6 bulan</span><strong>{rupiah(Math.round(trend.reduce((a, b) => a + b.pengeluaran, 0) / 6))}</strong></div><div className="card"><span>Rasio tabungan bulan ini</span><strong>{current.savingsRate}%</strong></div></div><div className="card chart-card report-chart"><SectionHeading title="Pergerakan Arus Kas" subtitle="Enam bulan terakhir" /><div className="report-area"><ResponsiveContainer width="100%" height="100%"><AreaChart data={trend}><defs><linearGradient id="incomeFill" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stopColor="var(--chart-income)" stopOpacity={.28} /><stop offset="100%" stopColor="var(--chart-income)" stopOpacity={0} /></linearGradient></defs><CartesianGrid vertical={false} stroke="var(--grid)" strokeDasharray="3 4" /><XAxis dataKey="name" axisLine={false} tickLine={false} tick={{ fill: 'var(--muted)', fontSize: 12 }} /><YAxis axisLine={false} tickLine={false} width="auto" tickFormatter={rupiahAxisTick} tick={{ fill: 'var(--muted)', fontSize: 11 }} /><Tooltip content={<ChartTip />} /><Area isAnimationActive={false} dataKey="pemasukan" name="Pemasukan" type="monotone" stroke="var(--chart-income)" fill="url(#incomeFill)" strokeWidth={3} /><Area isAnimationActive={false} dataKey="pengeluaran" name="Pengeluaran" type="monotone" stroke="var(--chart-expense)" fill="transparent" strokeWidth={2} /></AreaChart></ResponsiveContainer></div></div><div className="report-bottom"><div className="card padded-card"><SectionHeading title="Pengeluaran per Kategori" subtitle={`${monthLabel(period)} dibanding bulan sebelumnya`} /><div className="category-report-list">{categories.length ? categories.map(c => { const before = byCategory(data, last).find(x => x.name === c.name)?.value || 0; return <div key={c.name}><div className="category-report-name"><span><i style={{ background: categoryColors[c.name] || '#94a3b8' }} />{c.name}</span><strong>{rupiah(c.value)}</strong></div><div className="mini-bars"><span style={{ width: `${Math.min(100, c.value / Math.max(...categories.map(x => x.value), 1) * 100)}%`, background: categoryColors[c.name] || '#94a3b8' }} /><span className="last-month-bar" style={{ width: `${Math.min(100, before / Math.max(...categories.map(x => x.value), 1) * 100)}%` }} /></div></div>; }) : <Empty title="Belum ada data" detail="Catat pengeluaran untuk melihat analitik." />}</div><p className="small-note">Total bulan lalu: {rupiah(previous.expense)}</p></div><div className="card padded-card"><SectionHeading title="Pengeluaran Terbesar" subtitle={`Lima transaksi teratas ${monthLabel(period)}`} /><div className="top-spend-list">{top.map((entry, index) => <div key={entry.id}><span className="rank">{String(index + 1).padStart(2, '0')}</span><div><strong>{entry.title}</strong><small>{entry.category} · {dateLabel(entry.date)}</small></div><strong>{rupiah(entry.amount)}</strong></div>)}</div></div></div></>;
 }
 
 function SettingsPage({ data, dark, setDark, commit, serverMode, onLogout }: { data: FinanceData; dark: boolean; setDark: (next: boolean) => void; commit: (next: FinanceData, message: string) => void; serverMode: boolean; onLogout: () => void }) {
@@ -649,7 +652,7 @@ function EditorDialog({ editor, data, period, saving, onClose, onSave }: { edito
   };
   const heading = editor.kind === 'transaction' ? 'Catat Transaksi' : editor.kind === 'wallet' ? (investment ? 'Simpanan' : 'Dompet') : editor.kind === 'budget' ? 'Anggaran' : 'Jadwal Berulang';
   const dialogTitle = current ? `Ubah ${heading}` : editor.kind === 'transaction' ? heading + ' Baru' : investment ? 'Buat Simpanan' : `Tambah ${heading}`;
-  return <EditorModal title={dialogTitle} eyebrow={current ? 'UBAH DATA' : 'DATA BARU'} submitLabel={`Simpan ${editor.kind === 'transaction' ? 'Transaksi' : heading}`} saving={saving} error={error} onClose={onClose} onSubmit={submit}>
+  return <EditorModal title={dialogTitle} isTransaction={editor.kind === 'transaction'} eyebrow={current ? 'UBAH DATA' : 'DATA BARU'} submitLabel={`Simpan ${editor.kind === 'transaction' ? 'Transaksi' : heading}`} saving={saving} error={error} onClose={onClose} onSubmit={submit}>
     {(editor.kind === 'transaction' || editor.kind === 'recurring') && <div className="type-tabs" role="group" aria-label="Tipe transaksi">{(['expense', 'income', ...(editor.kind === 'transaction' ? ['transfer'] : [])] as EntryType[]).map(t => <MotionButton type="button" className={type === t ? `active ${t}` : ''} onClick={() => { setType(t); setCategory(t === 'income' ? 'Gaji' : 'Makanan & Minuman'); }} key={t}>{t === 'expense' ? 'Pengeluaran' : t === 'income' ? 'Pemasukan' : 'Transfer'}</MotionButton>)}</div>}
     {editor.kind === 'budget' && <label>Kategori<select value={category} onChange={e => setCategory(e.target.value)}>{[...new Set([...expenseCategories, ...data.budgets.map(b => b.category)])].map(c => <option key={c}>{c}</option>)}</select></label>}
     {(editor.kind === 'transaction' || editor.kind === 'recurring' || editor.kind === 'wallet') && <label>{editor.kind === 'wallet' ? (investment ? 'Nama simpanan' : 'Nama dompet') : editor.kind === 'recurring' ? 'Nama jadwal' : 'Judul transaksi'}<input value={title} onChange={e => setTitle(e.target.value)} placeholder={editor.kind === 'wallet' ? (investment ? 'Contoh: Dana darurat' : 'Contoh: Bank BCA') : editor.kind === 'recurring' ? 'Contoh: Listrik bulanan' : 'Contoh: Belanja makan siang'} maxLength={100} autoFocus /></label>}

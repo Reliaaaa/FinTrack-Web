@@ -87,7 +87,7 @@
   border-radius: 17px;
   background: var(--dock-active);
   box-shadow: inset 0 1px 0 var(--dock-specular);
-  transition: transform .32s cubic-bezier(.22, 1, .36, 1), width .32s cubic-bezier(.22, 1, .36, 1);
+  transition: transform 220ms cubic-bezier(.2, .8, .2, 1), width 220ms cubic-bezier(.2, .8, .2, 1);
 }
 
 .dock-item {
@@ -95,8 +95,10 @@
   z-index: 1;
   background: transparent;
   color: var(--soft);
-  transition: background-color .2s ease, color .2s ease, scale .18s ease, filter .18s ease;
+  transition: background-color .2s ease, color .2s ease;
 }
+.dock-item.motion-button:not(:disabled):active { scale: none; filter: none; }
+.dock-item .roll-letter { transition: none; transform: none !important; }
 .dock-item[aria-current='page'], .dock-item[data-current='true'] {
   background: var(--dock-active);
   color: var(--ink);

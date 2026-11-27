@@ -1,11 +1,11 @@
 import { expect, test } from '@playwright/test';
 
-test('transisi menu dan indikator anggaran aktif saat gerakan diizinkan', async ({ page }) => {
+test('dasbor langsung tampil dan anggaran tetap dapat bertransisi', async ({ page }) => {
   await page.emulateMedia({ reducedMotion: 'no-preference' });
   await page.goto('/');
   const view = page.getByRole('main').locator('.section-view');
   await expect(view.getByRole('heading', { name: /Selamat datang/ })).toBeVisible();
-  await expect(view).toHaveCSS('animation-name', 'section-enter');
+  await expect(view).toHaveCSS('animation-name', 'none');
 
   const nav = page.getByRole('navigation', { name: 'Navigasi utama' });
   await nav.getByRole('button', { name: 'Anggaran', exact: true }).click();

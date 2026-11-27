@@ -104,7 +104,10 @@ test('animasi transaksi menyesuaikan layar dan pengaturan Kurangi Gerakan', asyn
 
   await expect(indicator).toHaveCSS('transition-duration', '0.22s, 0.22s');
   await expect(create).toHaveCSS('--button-press-duration', '100ms');
-  await create.click();
+  await create.hover();
+  await page.mouse.down();
+  await expect(create).toHaveCSS('scale', '0.98');
+  await page.mouse.up();
   await expect(dialog).toHaveCSS('animation-name', 'transaction-enter');
   await expect(dialog).toHaveCSS('animation-duration', '0.18s');
   await expect(submit).toHaveCSS('--button-press-duration', '100ms');

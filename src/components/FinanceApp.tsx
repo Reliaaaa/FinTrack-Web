@@ -12,6 +12,7 @@ import { PasswordField } from './PasswordField';
 import { PrintReport } from './PrintReport';
 import { FloatingDock, type DockItem } from './FloatingDock';
 import { EditorModal } from './EditorModal';
+import { LogoutDialog } from './LogoutDialog';
 import { InvestmentTransferDialog, SavingsCards } from './Investments';
 
 type Tab = 'dashboard' | 'transactions' | 'wallets' | 'investments' | 'budgets' | 'recurring' | 'reports' | 'settings';
@@ -61,6 +62,7 @@ export default function FinanceApp({ startOnLogin = false }: { startOnLogin?: bo
   const [checkingSession, setCheckingSession] = useState(false);
   const [conflict, setConflict] = useState(false);
   const [saving, setSaving] = useState(false);
+  const [confirmLogout, setConfirmLogout] = useState(false);
   const versionRef = useRef('1');
   const accountRef = useRef('');
   const savingRef = useRef(false);
@@ -109,6 +111,7 @@ export default function FinanceApp({ startOnLogin = false }: { startOnLogin?: bo
     setConflict(false);
     setEditor(null);
     setServerMode(false);
+    setConfirmLogout(false);
     setAuthNotice(notice);
     setAuthRequired(true);
     setCheckingSession(false);
@@ -313,13 +316,11 @@ export default function FinanceApp({ startOnLogin = false }: { startOnLogin?: bo
     setServiceIssue('');
   };
   const logout = async () => {
-    if (savingRef.current) { showToast('Tunggu hingga perubahan selesai disimpan.'); return; }
-    try {
-      const response = await fetch('/api/v1/auth/logout', { method: 'POST' });
-      if (!response.ok) throw new Error('Gagal keluar. Coba lagi.');
-      hideAccount();
-      signalSessionChange();
-    } catch { showToast('Gagal keluar. Coba lagi.'); }
+    if (savingRef.current) return 'Tunggu hingga perubahan selesai disimpan.';
+    const response = await fetch('/api/v1/auth/logout', { method: 'POST' });
+    if (!response.ok) return 'Gagal keluar. Coba lagi.';
+    hideAccount();
+    signalSessionChange();
   };
   const deleteEntry = (entry: Entry) => {
     const movement = investmentMovement(data.wallets, entry);
@@ -373,7 +374,7 @@ export default function FinanceApp({ startOnLogin = false }: { startOnLogin?: bo
   {checkingSession && <div className="loading-screen" role="status">Memeriksa sesi akun…</div>}
   <div className="app-shell" style={checkingSession ? { display: 'none' } : undefined}>
     <div className="main-column">
-      <header className="topbar"><div className="topbar-left"><MotionButton className="topbar-brand" onClick={() => setTab('dashboard')} aria-label="FinTrack, buka dasbor"><span className="logo-mark"><TrendingUp size={20} strokeWidth={2.4} aria-hidden="true" /></span>FinTrack</MotionButton><span className="topbar-divider" aria-hidden="true" /><span className="topbar-title">{nav.find(n => n.id === tab)?.label}</span>{saving && <span className="status-pill blue" role="status">Menyimpan…</span>}</div><div className="topbar-actions"><label className="period-select"><CalendarDays size={16} aria-hidden="true" /><input type="month" aria-label="Pilih bulan" value={`${period.getFullYear()}-${String(period.getMonth() + 1).padStart(2, '0')}`} onChange={e => { if (e.target.value) { const [year, month] = e.target.value.split('-').map(Number); setPeriod(new Date(year, month - 1, 1)); } }} /></label><MotionButton className="icon-button" aria-label={dark ? 'Aktifkan tema terang' : 'Aktifkan tema gelap'} onClick={() => setDark(!dark)}>{dark ? <Sun size={19} /> : <Moon size={19} />}</MotionButton><MotionButton className="icon-button notification" aria-label="Lihat anggaran" onClick={() => setTab('budgets')}><Bell size={19} />{budgetsForMonth(data, period).some(b => current.entries.filter(e => e.type === 'expense' && e.category === b.category).reduce((a, e) => a + e.amount, 0) >= b.limit * .8) && <i />}</MotionButton><a className="icon-button topbar-help" href="https://github.com/Reliaaaa/FinTrack-Web#readme" target="_blank" rel="noreferrer" aria-label="Lihat panduan"><CircleHelp size={19} aria-hidden="true" /></a><MotionButton className="avatar header-avatar" type="button" onClick={() => setTab('settings')} aria-label="Buka pengaturan">{data.name.charAt(0).toUpperCase()}</MotionButton>{serverMode && <MotionButton type="button" className="button header-logout" aria-label="Keluar" onClick={logout}><Power size={18} aria-hidden="true" /> Keluar</MotionButton>}</div></header>
+      <header className="topbar"><div className="topbar-left"><MotionButton className="topbar-brand" onClick={() => setTab('dashboard')} aria-label="FinTrack, buka dasbor"><span className="logo-mark"><TrendingUp size={20} strokeWidth={2.4} aria-hidden="true" /></span>FinTrack</MotionButton><span className="topbar-divider" aria-hidden="true" /><span className="topbar-title">{nav.find(n => n.id === tab)?.label}</span>{saving && <span className="status-pill blue" role="status">Menyimpan…</span>}</div><div className="topbar-actions"><label className="period-select"><CalendarDays size={16} aria-hidden="true" /><input type="month" aria-label="Pilih bulan" value={`${period.getFullYear()}-${String(period.getMonth() + 1).padStart(2, '0')}`} onChange={e => { if (e.target.value) { const [year, month] = e.target.value.split('-').map(Number); setPeriod(new Date(year, month - 1, 1)); } }} /></label><MotionButton className="icon-button" aria-label={dark ? 'Aktifkan tema terang' : 'Aktifkan tema gelap'} onClick={() => setDark(!dark)}>{dark ? <Sun size={19} /> : <Moon size={19} />}</MotionButton><MotionButton className="icon-button notification" aria-label="Lihat anggaran" onClick={() => setTab('budgets')}><Bell size={19} />{budgetsForMonth(data, period).some(b => current.entries.filter(e => e.type === 'expense' && e.category === b.category).reduce((a, e) => a + e.amount, 0) >= b.limit * .8) && <i />}</MotionButton><a className="icon-button topbar-help" href="https://github.com/Reliaaaa/FinTrack-Web#readme" target="_blank" rel="noreferrer" aria-label="Lihat panduan"><CircleHelp size={19} aria-hidden="true" /></a><MotionButton className="avatar header-avatar" type="button" onClick={() => setTab('settings')} aria-label="Buka pengaturan">{data.name.charAt(0).toUpperCase()}</MotionButton>{serverMode && <MotionButton type="button" className="button header-logout" aria-label="Keluar" onClick={() => setConfirmLogout(true)}><Power size={18} aria-hidden="true" /> Keluar</MotionButton>}</div></header>
       <main className="content">
         {!serverMode && <div className="demo-banner" role={serviceIssue ? 'alert' : undefined}>
           <ShieldCheck size={17} />
@@ -400,7 +401,7 @@ export default function FinanceApp({ startOnLogin = false }: { startOnLogin?: bo
           {tab === 'budgets' && <Budgets data={data} current={current} period={period} open={openEditor} commit={commit} />}
           {tab === 'recurring' && <RecurringPage data={data} open={openEditor} commit={commit} serverMode={serverMode} />}
           {tab === 'reports' && <Reports data={data} current={current} categories={categories} trend={trend} period={period} onExportError={() => showToast('Gagal menyiapkan file Excel. Coba lagi.')} />}
-          {tab === 'settings' && <SettingsPage data={data} dark={dark} setDark={setDark} commit={commit} serverMode={serverMode} onLogout={logout} />}
+          {tab === 'settings' && <SettingsPage data={data} dark={dark} setDark={setDark} commit={commit} serverMode={serverMode} onLogout={() => setConfirmLogout(true)} />}
         </div>
       </main>
     </div>
@@ -408,6 +409,7 @@ export default function FinanceApp({ startOnLogin = false }: { startOnLogin?: bo
     {editor?.kind === 'investment-transfer'
       ? <InvestmentTransferDialog movement={editor} entry={editor.item} data={data} initialDate={today()} saving={saving} onClose={closeEditor} onSave={saveEditor} />
       : editor && <EditorDialog editor={editor} data={data} period={period} saving={saving} onClose={closeEditor} onSave={saveEditor} />}
+    {serverMode && confirmLogout && <LogoutDialog onClose={() => setConfirmLogout(false)} onConfirm={logout} />}
     {toast && <div key={toast.id} className="toast" role="status" data-transaction-saved={toast.transactionSaved || undefined}><Check size={17} />{toast.message}<MotionButton onClick={() => setToast(null)} aria-label="Tutup notifikasi"><X size={15} /></MotionButton></div>}
   </div>
   {!checkingSession && (tab === 'dashboard' || tab === 'reports') && (

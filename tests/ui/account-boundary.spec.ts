@@ -14,6 +14,7 @@ test('keluar lalu gunakan mode lokal tidak membawa atau menyimpan data akun', as
   await expect(page.getByText('AKUN-RAHASIA-QA')).toBeVisible();
   expect(await page.evaluate(() => localStorage.getItem('fintrack-demo-v1'))).toBeNull();
   await page.getByRole('banner').getByRole('button', { name: 'Keluar' }).click();
+  await page.getByRole('dialog', { name: 'Keluar dari FinTrack?' }).getByRole('button', { name: 'Ya, keluar' }).click();
   await expect(page.getByRole('heading', { name: 'Selamat datang kembali' })).toBeVisible();
   await page.getByRole('button', { name: 'Gunakan tanpa akun' }).click();
   await expect(page.getByText('Mode lokal.', { exact: true })).toBeVisible();

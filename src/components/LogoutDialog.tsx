@@ -50,9 +50,9 @@ export function LogoutDialog({ onClose, onConfirm }: {
       <p id={descriptionId}>Kamu perlu masuk lagi untuk membuka akunmu.</p>
       {error && <p className="form-error" role="alert">{error}</p>}
       <div className="logout-dialog-actions">
-        <MotionButton ref={cancelRef} type="button" className="button button-outline" disabled={pending} onClick={cancel}>
+        <button ref={cancelRef} type="button" className="button button-outline" disabled={pending} onClick={cancel}>
           Batal
-        </MotionButton>
+        </button>
         <MotionButton type="button" className="button logout-confirm-button" disabled={pending} onClick={confirm}>
           {pending ? 'Sedang keluar…' : 'Ya, keluar'}
         </MotionButton>

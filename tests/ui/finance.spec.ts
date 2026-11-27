@@ -210,6 +210,49 @@ test('header ponsel menempatkan kalender, tema, dan Keluar setelah merek', async
   await expect(header.getByRole('link', { name: 'Lihat panduan' })).toBeVisible();
 });
 
+test('Keluar dari header dan pengaturan membutuhkan konfirmasi', async ({ page }) => {
+  await page.setViewportSize({ width: 375, height: 844 });
+  const user = { id: 'qa-user', name: 'Tester' };
+  const data = { name: user.name, wallets: [], entries: [], budgets: [], recurring: [] };
+  let logoutRequests = 0;
+  await page.route('**/api/v1/bootstrap', route => route.fulfill({ json: { configured: true, user, version: '1', data } }));
+  await page.route('**/api/v1/auth/me', route => route.fulfill({ json: { user } }));
+  await page.route('**/api/v1/auth/logout', route => {
+    expect(route.request().method()).toBe('POST');
+    logoutRequests += 1;
+    return route.fulfill({ status: logoutRequests === 1 ? 500 : 200, json: {} });
+  });
+  await page.goto('/');
+
+  const headerLogout = page.getByRole('banner').getByRole('button', { name: 'Keluar', exact: true });
+  const dialog = page.getByRole('dialog', { name: 'Keluar dari FinTrack?' });
+  const cancel = dialog.getByRole('button', { name: 'Batal' });
+  const confirm = dialog.getByRole('button', { name: 'Ya, keluar' });
+  await headerLogout.click();
+  await expect(cancel).toBeFocused();
+  await cancel.click();
+  await expect(dialog).toBeHidden();
+  await expect(headerLogout).toBeFocused();
+
+  await page.goto('/settings');
+  const settingsLogout = page.getByRole('main').getByRole('button', { name: 'Keluar', exact: true });
+  await settingsLogout.click();
+  await expect(dialog).toBeVisible();
+  await page.keyboard.press('Escape');
+  await expect(dialog).toBeHidden();
+  expect(logoutRequests).toBe(0);
+
+  await settingsLogout.click();
+  await confirm.click();
+  await expect(dialog.getByRole('alert')).toHaveText('Gagal keluar. Coba lagi.');
+  await expect(confirm).toBeEnabled();
+  await confirm.click();
+  await expect(dialog).toBeHidden();
+  await expect(headerLogout).toBeHidden();
+  await expect(page.getByRole('heading', { name: 'Selamat datang kembali' })).toBeVisible();
+  expect(logoutRequests).toBe(2);
+});
+
 test('header tetap terlihat saat dasbor digulir di desktop dan ponsel', async ({ page }) => {
   await page.emulateMedia({ reducedMotion: 'reduce' });
   for (const width of [1440, 375]) {

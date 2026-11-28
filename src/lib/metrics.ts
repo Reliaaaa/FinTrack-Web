@@ -1,4 +1,4 @@
-import { FinanceData, monthEntries, walletBalance, budgetsForMonth } from './finance';
+import { FinanceData, monthEntries, walletBalance, budgetsForMonth, budgetSpent } from './finance';
 
 export function metrics(data: FinanceData, date: Date) {
   const entries = monthEntries(data, date);
@@ -15,7 +15,7 @@ export function metrics(data: FinanceData, date: Date) {
   }
   const monthlyBudgets = budgetsForMonth(data, date);
   const budgetLimit = monthlyBudgets.reduce((a, b) => a + b.limit, 0);
-  const spending = monthlyBudgets.reduce((a, b) => a + entries.filter(e => e.type === 'expense' && e.category === b.category).reduce((s, e) => s + e.amount, 0), 0);
+  const spending = monthlyBudgets.reduce((a, b) => a + budgetSpent(data, b), 0);
   return { entries, income, expense, balance, digitalBalance, cashBalance, budgetLimit, spending, budgetRemaining: budgetLimit - spending, savingsRate: income ? Math.round((income - expense) / income * 100) : 0 };
 }
 

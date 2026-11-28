@@ -10,7 +10,7 @@ test('dasbor langsung tampil dan anggaran tetap dapat bertransisi', async ({ pag
   const nav = page.getByRole('navigation', { name: 'Navigasi utama' });
   await nav.getByRole('button', { name: 'Anggaran', exact: true }).click();
   await expect(page).toHaveURL(/\/budgets$/);
-  await expect(view.getByRole('heading', { name: 'Anggaran Bulanan' })).toBeVisible();
+  await expect(view.getByRole('heading', { name: 'Anggaran', exact: true })).toBeVisible();
   await expect(view).toHaveCSS('animation-name', 'section-enter');
   const fill = view.getByRole('progressbar').first().locator('span');
   await expect(fill).toHaveCSS('transition-property', 'width');
@@ -26,7 +26,7 @@ test('navigasi ponsel dan indikator anggaran langsung tampil pada reduced motion
   await page.goto('/');
   await page.getByRole('navigation', { name: 'Navigasi utama' }).getByRole('button', { name: 'Anggaran' }).click();
   const view = page.getByRole('main').locator('.section-view');
-  await expect(view.getByRole('heading', { name: 'Anggaran Bulanan' })).toBeVisible();
+  await expect(view.getByRole('heading', { name: 'Anggaran', exact: true })).toBeVisible();
   await expect(view).toHaveCSS('animation-name', 'none');
   const fill = view.getByRole('progressbar').first().locator('span');
   await expect.poll(() => fill.evaluate(element => parseFloat(getComputedStyle(element).transitionDuration))).toBeLessThan(.001);

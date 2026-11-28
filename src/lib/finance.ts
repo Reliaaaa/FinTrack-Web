@@ -1,7 +1,7 @@
 export type EntryType = 'income' | 'expense' | 'transfer';
 export type Wallet = { id: string; name: string; type: 'bank' | 'ewallet' | 'cash' | 'credit' | 'investment'; openingBalance: number; color: string; archived?: boolean };
 export type Entry = { id: string; type: EntryType; amount: number; walletId: string; targetWalletId?: string; category: string; title: string; note?: string; date: string; receipt?: string };
-export type Budget = { id: string; category: string; limit: number; period?: string };
+export type Budget = { id: string; category: string; limit: number; period?: string; startDate?: string; endDate?: string };
 export type Recurring = { id: string; title: string; type: 'income' | 'expense'; amount: number; walletId: string; category: string; frequency: 'weekly' | 'monthly' | 'yearly'; nextDate: string; anchorDay?: number; active: boolean };
 export type FinanceData = { wallets: Wallet[]; entries: Entry[]; budgets: Budget[]; recurring: Recurring[]; name: string };
 export type InvestmentMovement = { investmentId: string; direction: 'deposit' | 'withdrawal' };
@@ -21,7 +21,35 @@ export function investmentMovement(wallets: Wallet[], entry: Entry): InvestmentM
 export const expenseCategories = ['Makanan & Minuman', 'Transportasi', 'Tagihan & Utilitas', 'Belanja', 'Hiburan', 'Kesehatan', 'Pendidikan', 'Lainnya'];
 export const incomeCategories = ['Gaji', 'Bonus', 'Usaha', 'Investasi', 'Lainnya'];
 export const monthKey = (date: Date) => `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`;
-export const budgetsForMonth = (data: FinanceData, date: Date) => data.budgets.filter(b => (b.period || monthKey(new Date())) === monthKey(date));
+export function addDays(date: string, days: number): string {
+  const next = new Date(`${date}T12:00:00Z`);
+  next.setUTCDate(next.getUTCDate() + days);
+  return next.toISOString().slice(0, 10);
+}
+
+export const countDays = (start: string, end: string) => Math.round((Date.parse(end) - Date.parse(start)) / 86_400_000) + 1;
+
+export function monthRange(key: string) {
+  const [year, month] = key.split('-').map(Number);
+  return { start: `${key}-01`, end: `${key}-${new Date(Date.UTC(year, month, 0)).getUTCDate()}` };
+}
+
+// Anggaran lama tanpa tanggal tetap mengikuti bulan kalender.
+export const budgetRange = (budget: Budget) => budget.startDate && budget.endDate
+  ? { start: budget.startDate, end: budget.endDate }
+  : monthRange(budget.period || monthKey(new Date()));
+
+export const rangesOverlap = (a: { start: string; end: string }, b: { start: string; end: string }) => a.start <= b.end && b.start <= a.end;
+
+export const budgetsForMonth = (data: FinanceData, date: Date) => {
+  const month = monthRange(monthKey(date));
+  return data.budgets.filter(budget => rangesOverlap(budgetRange(budget), month));
+};
+
+export function budgetSpent(data: FinanceData, budget: Budget): number {
+  const { start, end } = budgetRange(budget);
+  return data.entries.reduce((sum, entry) => entry.type === 'expense' && entry.category === budget.category && entry.date >= start && entry.date <= end ? sum + entry.amount : sum, 0);
+}
 export const categoryColors: Record<string, string> = {
   'Makanan & Minuman': '#10b981', Transportasi: '#3b82f6', 'Tagihan & Utilitas': '#f59e0b', Belanja: '#f43f5e', Hiburan: '#8b5cf6', Kesehatan: '#14b8a6', Pendidikan: '#6366f1', Gaji: '#10b981', Bonus: '#22c55e', Usaha: '#0ea5e9', Investasi: '#8b5cf6', Lainnya: '#94a3b8',
 };

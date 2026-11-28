@@ -537,3 +537,6 @@
 .budget-range { display: block; margin: 4px 0 8px; color: var(--muted); font-size: 12px; }
 .budget-duration { display: flex; flex-wrap: wrap; align-items: center; gap: 12px; }
 .budget-duration .button { min-height: 44px; }
+.budget-name { overflow-wrap: anywhere; }
+.budget-category { display: block; color: var(--muted); font-size: 12px; }
+.budget-title > span { min-width: 0; overflow-wrap: anywhere; }

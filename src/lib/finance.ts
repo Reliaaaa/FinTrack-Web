@@ -1,7 +1,7 @@
 export type EntryType = 'income' | 'expense' | 'transfer';
 export type Wallet = { id: string; name: string; type: 'bank' | 'ewallet' | 'cash' | 'credit' | 'investment'; openingBalance: number; color: string; archived?: boolean };
 export type Entry = { id: string; type: EntryType; amount: number; walletId: string; targetWalletId?: string; category: string; title: string; note?: string; date: string; receipt?: string };
-export type Budget = { id: string; category: string; limit: number; period?: string; startDate?: string; endDate?: string };
+export type Budget = { id: string; category: string; limit: number; title?: string; period?: string; startDate?: string; endDate?: string };
 export type Recurring = { id: string; title: string; type: 'income' | 'expense'; amount: number; walletId: string; category: string; frequency: 'weekly' | 'monthly' | 'yearly'; nextDate: string; anchorDay?: number; active: boolean };
 export type FinanceData = { wallets: Wallet[]; entries: Entry[]; budgets: Budget[]; recurring: Recurring[]; name: string };
 export type InvestmentMovement = { investmentId: string; direction: 'deposit' | 'withdrawal' };

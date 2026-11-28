@@ -48,7 +48,7 @@ Pisahkan saldo rekening bank, e-wallet, tunai, dan kartu kredit. Arsipkan dompet
 <td width="50%" valign="top">
 
 ### 🎯 Anggaran
-Atur batas per bulan atau per rentang tanggal, misalnya 30 hari. Status berubah saat pemakaian mencapai 80% dan 100%.
+Atur batas per bulan atau per rentang tanggal, misalnya 30 hari, dengan judul sendiri. Status berubah saat pemakaian mencapai 80% dan 100%.
 
 </td>
 </tr>

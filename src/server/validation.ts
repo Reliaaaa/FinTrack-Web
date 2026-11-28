@@ -9,7 +9,7 @@ const date = z.string().regex(/^\d{4}-\d{2}-\d{2}$/).refine(value => {
 });
 const wallet = z.object({ id, name, type: z.enum(['bank', 'ewallet', 'cash', 'credit', 'investment']), openingBalance: amount, color: z.string().regex(/^#[0-9a-fA-F]{6}$/), archived: z.boolean().optional() });
 const entry = z.object({ id, type: z.enum(['income', 'expense', 'transfer']), amount: amount.positive(), walletId: id, targetWalletId: id.optional(), category: name, title: name, note: z.string().max(500).optional(), date, receipt: z.string().max(1_500_000).refine(v => !v || /^data:image\/(png|jpeg|webp);base64,[A-Za-z0-9+/=]+$/.test(v)).optional() });
-const budget = z.object({ id, category: name, limit: amount.positive(), period: z.string().regex(/^(19|20|21)\d{2}-(0[1-9]|1[0-2])$/).optional(), startDate: date.optional(), endDate: date.optional() }).refine(
+const budget = z.object({ id, title: name.optional(), category: name, limit: amount.positive(), period: z.string().regex(/^(19|20|21)\d{2}-(0[1-9]|1[0-2])$/).optional(), startDate: date.optional(), endDate: date.optional() }).refine(
   value => Boolean(value.startDate) === Boolean(value.endDate) && (!value.startDate || !value.endDate || (value.startDate <= value.endDate && countDays(value.startDate, value.endDate) <= 366)),
   { message: 'Rentang tanggal anggaran tidak valid' },
 );

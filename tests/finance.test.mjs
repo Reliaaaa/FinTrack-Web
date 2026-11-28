@@ -119,3 +119,12 @@ test('a 30-day budget spans two months and counts only expenses inside its dates
   assert.deepEqual(financeSchema.parse(next).budgets[0], budget);
   for (const bad of [{ endDate: undefined }, { endDate: '2026-11-24' }, { endDate: '2028-01-01' }]) assert.equal(financeSchema.safeParse({ ...next, budgets: [{ ...budget, ...bad }] }).success, false);
 });
+
+test('judul anggaran disimpan dan tetap opsional', () => {
+  const data = seedData(new Date(2026, 10, 15));
+  const titled = { ...data, budgets: [{ ...data.budgets[0], title: 'Uang makan' }, data.budgets[1]] };
+  const parsed = financeSchema.parse(titled);
+  assert.equal(parsed.budgets[0].title, 'Uang makan');
+  assert.equal(parsed.budgets[1].title, undefined);
+  assert.equal(financeSchema.safeParse({ ...data, budgets: [{ ...data.budgets[0], title: 'x'.repeat(101) }] }).success, false);
+});

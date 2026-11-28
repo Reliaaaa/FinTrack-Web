@@ -393,6 +393,7 @@ test('anggaran 30 hari berlaku lintas bulan', async ({ page }) => {
   await page.goto('/budgets');
   await page.getByLabel('Pilih bulan').fill('2027-01');
   await page.getByRole('button', { name: 'Buat anggaran' }).click();
+  await page.getByLabel('Judul anggaran').fill('Uang makan 30 hari');
   await page.getByLabel('Periode').selectOption('range');
   await page.getByLabel('Tanggal mulai').fill('2027-01-20');
   await page.getByRole('button', { name: '30 hari' }).click();
@@ -402,6 +403,9 @@ test('anggaran 30 hari berlaku lintas bulan', async ({ page }) => {
   await expect(page.locator('.budget-card')).toHaveCount(1);
   await page.getByLabel('Pilih bulan').fill('2027-02');
   await expect(page.locator('.budget-card')).toContainText('30 hari');
+  await page.reload();
+  await page.getByLabel('Pilih bulan').fill('2027-02');
+  await expect(page.locator('.budget-card').getByRole('heading', { name: 'Uang makan 30 hari' })).toBeVisible();
   await page.getByLabel('Pilih bulan').fill('2027-03');
   await expect(page.locator('.budget-card')).toHaveCount(0);
 });

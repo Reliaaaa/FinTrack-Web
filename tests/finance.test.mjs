@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { seedData, walletBalance, nextOccurrence } from '../src/lib/finance.ts';
+import { seedData, addDays, budgetSpent, budgetsForMonth, countDays, walletBalance, nextOccurrence } from '../src/lib/finance.ts';
 import { metrics } from '../src/lib/metrics.ts';
 import { financeSchema } from '../src/server/validation.ts';
 import { icsText } from '../src/lib/export.ts';
@@ -104,4 +104,18 @@ test('investment transfers conserve net worth and reject unbacked savings withdr
   assert.equal(financeSchema.safeParse({ ...next, entries: [withdrawal, ...data.entries] }).success, false);
   assert.equal(financeSchema.safeParse({ ...next, entries: [{ ...withdrawal, type: 'expense' }, deposit, ...data.entries] }).success, false);
   assert.equal(financeSchema.safeParse({ ...next, wallets: [...data.wallets, { ...account, openingBalance: 1 }] }).success, false);
+});
+
+test('a 30-day budget spans two months and counts only expenses inside its dates', () => {
+  const data = seedData(new Date(2026, 10, 15));
+  const budget = { id: 'trip', category: 'Transportasi', limit: 900000, startDate: '2026-11-25', endDate: addDays('2026-11-25', 29) };
+  assert.equal(budget.endDate, '2026-12-24');
+  assert.equal(countDays(budget.startDate, budget.endDate), 30);
+  const base = { type: 'expense', walletId: 'bca', category: 'Transportasi', title: 'Uji' };
+  const next = { ...data, budgets: [budget], entries: ['2026-11-24', '2026-11-25', '2026-12-24', '2026-12-25'].map((date, index) => ({ ...base, id: `t${index}`, date, amount: 10 ** (index + 1) })) };
+  assert.equal(budgetSpent(next, budget), 100 + 1000);
+  for (const [month, count] of [[9, 0], [10, 1], [11, 1], [12, 0]]) assert.equal(budgetsForMonth(next, new Date(2026, month, 1)).length, count);
+  assert.equal(metrics(next, new Date(2026, 11, 1)).spending, 1100);
+  assert.deepEqual(financeSchema.parse(next).budgets[0], budget);
+  for (const bad of [{ endDate: undefined }, { endDate: '2026-11-24' }, { endDate: '2028-01-01' }]) assert.equal(financeSchema.safeParse({ ...next, budgets: [{ ...budget, ...bad }] }).success, false);
 });

@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import { isFundingWallet } from '../lib/finance';
+import { countDays, isFundingWallet } from '../lib/finance';
 const name = z.string().trim().min(1).max(100);
 const amount = z.number().finite().nonnegative().max(1_000_000_000_000);
 const id = z.string().min(1).max(100);
@@ -9,7 +9,10 @@ const date = z.string().regex(/^\d{4}-\d{2}-\d{2}$/).refine(value => {
 });
 const wallet = z.object({ id, name, type: z.enum(['bank', 'ewallet', 'cash', 'credit', 'investment']), openingBalance: amount, color: z.string().regex(/^#[0-9a-fA-F]{6}$/), archived: z.boolean().optional() });
 const entry = z.object({ id, type: z.enum(['income', 'expense', 'transfer']), amount: amount.positive(), walletId: id, targetWalletId: id.optional(), category: name, title: name, note: z.string().max(500).optional(), date, receipt: z.string().max(1_500_000).refine(v => !v || /^data:image\/(png|jpeg|webp);base64,[A-Za-z0-9+/=]+$/.test(v)).optional() });
-const budget = z.object({ id, category: name, limit: amount.positive(), period: z.string().regex(/^(19|20|21)\d{2}-(0[1-9]|1[0-2])$/).optional() });
+const budget = z.object({ id, category: name, limit: amount.positive(), period: z.string().regex(/^(19|20|21)\d{2}-(0[1-9]|1[0-2])$/).optional(), startDate: date.optional(), endDate: date.optional() }).refine(
+  value => Boolean(value.startDate) === Boolean(value.endDate) && (!value.startDate || !value.endDate || (value.startDate <= value.endDate && countDays(value.startDate, value.endDate) <= 366)),
+  { message: 'Rentang tanggal anggaran tidak valid' },
+);
 const recurring = z.object({ id, title: name, type: z.enum(['income', 'expense']), amount: amount.positive(), walletId: id, category: name, frequency: z.enum(['weekly', 'monthly', 'yearly']), nextDate: date, anchorDay: z.number().int().min(1).max(31).optional(), active: z.boolean() });
 export const financeSchema = z.object({ wallets: z.array(wallet).max(100), entries: z.array(entry).max(10000), budgets: z.array(budget).max(200), recurring: z.array(recurring).max(500), name: z.string().trim().min(1).max(60) }).superRefine((data, ctx) => {
   const wallets = new Map(data.wallets.map(w => [w.id, w]));

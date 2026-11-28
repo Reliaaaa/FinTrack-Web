@@ -388,3 +388,20 @@ test('simpanan dapat diisi dari bank dan ditarik ke e-wallet tanpa menghitungnya
   await page.goto('/');
   await expect(wealth.locator('.kpi-value')).toHaveText(originalWealth);
 });
+
+test('anggaran 30 hari berlaku lintas bulan', async ({ page }) => {
+  await page.goto('/budgets');
+  await page.getByLabel('Pilih bulan').fill('2027-01');
+  await page.getByRole('button', { name: 'Buat anggaran' }).click();
+  await page.getByLabel('Periode').selectOption('range');
+  await page.getByLabel('Tanggal mulai').fill('2027-01-20');
+  await page.getByRole('button', { name: '30 hari' }).click();
+  await expect(page.getByLabel('Tanggal selesai')).toHaveValue('2027-02-18');
+  await page.getByLabel('Nominal rupiah').fill('300000');
+  await page.getByRole('button', { name: 'Simpan Anggaran' }).click();
+  await expect(page.locator('.budget-card')).toHaveCount(1);
+  await page.getByLabel('Pilih bulan').fill('2027-02');
+  await expect(page.locator('.budget-card')).toContainText('30 hari');
+  await page.getByLabel('Pilih bulan').fill('2027-03');
+  await expect(page.locator('.budget-card')).toHaveCount(0);
+});
